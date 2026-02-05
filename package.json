@@ -12,6 +12,8 @@
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-slot": "^1.2.4",
+    "@remotion/cli": "^4.0.418",
+    "@remotion/player": "^4.0.418",
     "@supabase/supabase-js": "^2.95.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -20,6 +22,7 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "remotion": "^4.0.418",
     "tailwind-merge": "^3.4.0",
     "wavesurfer.js": "^7.12.1",
     "zustand": "^5.0.11"
