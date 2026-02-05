@@ -2,12 +2,13 @@
 
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
-import { Mic, Wand2, Play, Download, Loader2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
+import { Mic, Wand2, Play, Download, Loader2, MessageSquare, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { usePodcastStore } from '@/lib/store'
 import { useState, useRef, useEffect } from 'react'
 import { AudioPlayer } from '@/components/AudioPlayer'
 import { motion, AnimatePresence } from 'framer-motion'
-import * as Accordion from '@radix-ui/react-accordion'
+import { saveProject } from '@/lib/projects'
+import { toast } from 'sonner'
 
 export default function CreatePodcastPage() {
   const { 
@@ -20,9 +21,9 @@ export default function CreatePodcastPage() {
   } = usePodcastStore()
 
   const [isScriptExpanded, setIsScriptExpanded] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom of chat when script updates
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [script])
@@ -30,7 +31,6 @@ export default function CreatePodcastPage() {
   const generateScript = async () => {
     if (!topic) return
     setIsGeneratingScript(true)
-    // Simulate delay for demo if API isn't ready, or real call
     try {
       const res = await fetch('/api/podcast/generate-script', {
         method: 'POST',
@@ -39,7 +39,11 @@ export default function CreatePodcastPage() {
       })
       const data = await res.json()
       if (data.dialogue) setScript(data.dialogue)
-    } catch (e) { console.error(e) } finally { setIsGeneratingScript(false) }
+    } catch (e) { 
+      toast.error("Failed to generate script")
+    } finally { 
+      setIsGeneratingScript(false) 
+    }
   }
 
   const generateAudio = async () => {
@@ -53,7 +57,29 @@ export default function CreatePodcastPage() {
       })
       const data = await res.json()
       if (data.audio) setAudioUrl(`data:audio/mp3;base64,${data.audio}`)
-    } catch (e) { console.error(e) } finally { setIsGeneratingAudio(false) }
+    } catch (e) { 
+      toast.error("Failed to generate audio")
+    } finally { 
+      setIsGeneratingAudio(false) 
+    }
+  }
+
+  const handleSave = async () => {
+    if (!script.length) return
+    setIsSaving(true)
+    try {
+      await saveProject(
+        topic.slice(0, 50) || 'Untitled Podcast',
+        'podcast',
+        { topic, language, script },
+        audioUrl
+      )
+      toast.success("Podcast saved to studio!")
+    } catch (e) {
+      toast.error("Failed to save project. Please login.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -70,6 +96,18 @@ export default function CreatePodcastPage() {
               Podcast Studio
             </h1>
           </div>
+          
+          {script.length > 0 && (
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving}
+              variant="outline" 
+              className="border-purple-500/30 hover:bg-purple-500/10 text-purple-200"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+              Save Project
+            </Button>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-16rem)]">

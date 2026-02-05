@@ -1,17 +1,39 @@
+'use client'
+
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
-import { Mic, Presentation, Clock, Plus } from 'lucide-react'
+import { Mic, Presentation, Clock, Plus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { getProjects, Project } from '@/lib/projects'
+import { toast } from 'sonner'
 
 export default function DashboardPage() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await getProjects()
+        setProjects(data)
+      } catch (e) {
+        toast.error("Failed to load projects. Please login.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchProjects()
+  }, [])
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#030014] text-white">
       <Header />
       
-      <main className="container mx-auto px-6 pt-32 pb-16">
+      <main className="container mx-auto px-6 pt-32 pb-16 max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Creator Studio</h1>
+            <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-200 to-pink-200">Creator Studio</h1>
             <p className="text-gray-400">Manage your projects and create new magic.</p>
           </div>
           <div className="flex gap-4">
@@ -23,7 +45,7 @@ export default function DashboardPage() {
 
         <div className="grid md:grid-cols-2 gap-8 mb-16">
           <Link href="/create/podcast" className="group">
-            <div className="h-full p-8 rounded-3xl bg-gradient-to-br from-purple-900/20 to-black border border-white/10 hover:border-purple-500/50 transition-all duration-300 relative overflow-hidden">
+            <div className="h-full p-8 rounded-3xl glass-panel hover:border-purple-500/50 transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-4 right-4 p-2 rounded-full bg-purple-500/10 text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
                 <Plus className="w-6 h-6" />
               </div>
@@ -34,7 +56,7 @@ export default function DashboardPage() {
           </Link>
 
           <Link href="/create/slides" className="group">
-            <div className="h-full p-8 rounded-3xl bg-gradient-to-br from-pink-900/20 to-black border border-white/10 hover:border-pink-500/50 transition-all duration-300 relative overflow-hidden">
+            <div className="h-full p-8 rounded-3xl glass-panel hover:border-pink-500/50 transition-all duration-300 relative overflow-hidden">
               <div className="absolute top-4 right-4 p-2 rounded-full bg-pink-500/10 text-pink-400 group-hover:bg-pink-500 group-hover:text-white transition-colors">
                 <Plus className="w-6 h-6" />
               </div>
@@ -50,24 +72,43 @@ export default function DashboardPage() {
             <Clock className="w-5 h-5 text-gray-500" /> Recent Projects
           </h3>
           
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${i % 2 === 0 ? 'bg-pink-500/20 text-pink-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                    {i % 2 === 0 ? <Presentation className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="space-y-4">
+              {projects.map((project) => (
+                <div key={project.id} className="flex items-center justify-between p-4 rounded-xl glass-panel hover:bg-white/5 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${project.type === 'slides' ? 'bg-pink-500/20 text-pink-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                      {project.type === 'slides' ? <Presentation className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-lg">{project.title}</h4>
+                      <p className="text-xs text-gray-500">
+                        {new Date(project.created_at).toLocaleDateString()} • {project.type === 'slides' ? 'Presentation' : 'Audio Script'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium">Project Alpha {i}</h4>
-                    <p className="text-xs text-gray-500">Generated 2 hours ago</p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                      Edit
+                    </Button>
+                    {project.audio_url && (
+                        <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
+                            Download
+                        </Button>
+                    )}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                  View
-                </Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500 border border-dashed border-white/10 rounded-2xl">
+              No projects yet. Start creating!
+            </div>
+          )}
         </div>
       </main>
     </div>

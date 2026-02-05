@@ -2,12 +2,14 @@
 
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
-import { Presentation, Wand2, Video, Loader2, Play } from 'lucide-react'
+import { Presentation, Wand2, Video, Loader2, Play, Save } from 'lucide-react'
 import { useSlidesStore } from '@/lib/slidesStore'
 import { Player } from '@remotion/player'
 import { SlideComposition } from '@/components/remotion/SlideComposition'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { saveProject } from '@/lib/projects'
+import { toast } from 'sonner'
 
 export default function CreateSlidesPage() {
   const { 
@@ -19,6 +21,7 @@ export default function CreateSlidesPage() {
   } = useSlidesStore()
 
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const generateSlides = async () => {
     if (!topic) return
@@ -31,7 +34,11 @@ export default function CreateSlidesPage() {
       })
       const data = await res.json()
       if (data.slides) setSlides(data.slides)
-    } catch (e) { console.error(e) } finally { setIsGenerating(false) }
+    } catch (e) { 
+      toast.error("Failed to generate slides")
+    } finally { 
+      setIsGenerating(false) 
+    }
   }
 
   const generateVideo = async () => {
@@ -58,6 +65,24 @@ export default function CreateSlidesPage() {
     setIsGeneratingVideo(false)
   }
 
+  const handleSave = async () => {
+    if (!slides.length) return
+    setIsSaving(true)
+    try {
+      await saveProject(
+        topic.slice(0, 50) || 'Untitled Slides',
+        'slides',
+        { topic, style, slides },
+        null // We don't have a single audio URL for slides yet
+      )
+      toast.success("Presentation saved to studio!")
+    } catch (e) {
+      toast.error("Failed to save project. Please login.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const totalDuration = slides.reduce((acc, s) => acc + (s.duration ? Math.ceil(s.duration * 30) : 150), 0)
 
   return (
@@ -74,6 +99,18 @@ export default function CreateSlidesPage() {
               Slide Deck Studio
             </h1>
           </div>
+
+          {slides.length > 0 && (
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving}
+              variant="outline" 
+              className="border-pink-500/30 hover:bg-pink-500/10 text-pink-200"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+              Save Project
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-16rem)] overflow-hidden">
