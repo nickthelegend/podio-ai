@@ -1,35 +1,47 @@
 'use client'
 
+import { useEffect, useState, useCallback } from 'react'
+import { getProjects, Project } from '@/lib/projects'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Mic, Presentation, Clock, Plus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { getProjects, Project } from '@/lib/projects'
-import { toast } from 'sonner'
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const data = await getProjects()
+      setProjects(data)
+    } catch (e) {
+      toast.error("Failed to load projects.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const data = await getProjects()
-        setProjects(data)
-      } catch (e) {
-        toast.error("Failed to load projects. Please login.")
-      } finally {
-        setIsLoading(false)
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+      } else {
+        fetchProjects()
       }
     }
-    fetchProjects()
-  }, [])
+    checkUser()
+  }, [router, fetchProjects])
 
   return (
     <div className="min-h-screen bg-[#030014] text-white">
       <Header />
-      
+
       <main className="container mx-auto px-6 pt-32 pb-16 max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
           <div>
@@ -71,7 +83,7 @@ export default function DashboardPage() {
           <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
             <Clock className="w-5 h-5 text-gray-500" /> Recent Projects
           </h3>
-          
+
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -96,9 +108,9 @@ export default function DashboardPage() {
                       Edit
                     </Button>
                     {project.audio_url && (
-                        <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
-                            Download
-                        </Button>
+                      <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300">
+                        Download
+                      </Button>
                     )}
                   </div>
                 </div>

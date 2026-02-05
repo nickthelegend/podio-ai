@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export interface Project {
   id: string
@@ -10,19 +10,19 @@ export interface Project {
 }
 
 export const saveProject = async (
-  title: string, 
-  type: 'podcast' | 'slides', 
-  content: any, 
+  title: string,
+  type: 'podcast' | 'slides',
+  content: any,
   audioUrl?: string | null
 ) => {
-  const { data: { user } } = await createClient.auth.getUser()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+
   if (!user) throw new Error("User not authenticated")
 
-  const { data, error } = await createClient
+  const { data, error } = await supabase
     .from('projects')
     .insert([
-      { 
+      {
         user_id: user.id,
         title: title || 'Untitled Project',
         type,
@@ -38,10 +38,10 @@ export const saveProject = async (
 }
 
 export const getProjects = async () => {
-  const { data: { user } } = await createClient.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const { data, error } = await createClient
+  const { data, error } = await supabase
     .from('projects')
     .select('*')
     .eq('user_id', user.id)
