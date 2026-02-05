@@ -3,6 +3,30 @@ import { NextResponse } from "next/server";
 
 const client = new TextToSpeechClient();
 
+// Voice Configurations
+const VOICE_REGISTRY: Record<string, { Host: any; Guest: any }> = {
+  // English (US)
+  "en-US": {
+    Host: { name: "en-US-Neural2-D", languageCode: "en-US" }, // Male
+    Guest: { name: "en-GB-Neural2-A", languageCode: "en-GB" }, // Female
+  },
+  // Hindi (India)
+  "hi-IN": {
+    Host: { name: "hi-IN-Neural2-B", languageCode: "hi-IN" }, // Male
+    Guest: { name: "hi-IN-Neural2-A", languageCode: "hi-IN" }, // Female
+  },
+  // Tamil (India)
+  "ta-IN": {
+    Host: { name: "ta-IN-Neural2-B", languageCode: "ta-IN" }, // Male
+    Guest: { name: "ta-IN-Neural2-A", languageCode: "ta-IN" }, // Female
+  },
+  // Telugu (India)
+  "te-IN": {
+    Host: { name: "te-IN-Standard-B", languageCode: "te-IN" }, // Male
+    Guest: { name: "te-IN-Standard-A", languageCode: "te-IN" }, // Female
+  },
+};
+
 export async function POST(req: Request) {
   try {
     const { script, language = "en-US" } = await req.json();
@@ -11,27 +35,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid script format" }, { status: 400 });
     }
 
-    // Sequential Generation Strategy (Reliable Fallback)
-    // We generate audio for each line individually using the correct voice
-    // and then concatenate the buffers.
-    
     const audioBuffers: Buffer[] = [];
     
-    // Voice Mapping
-    const voiceMap = {
-        'Host': { name: 'en-US-Neural2-D', languageCode: 'en-US' },
-        'Guest': { name: 'en-GB-Neural2-A', languageCode: 'en-GB' },
-        // Fallback for script speaker names
-        'Speaker R': { name: 'en-US-Neural2-D', languageCode: 'en-US' },
-        'Speaker S': { name: 'en-GB-Neural2-A', languageCode: 'en-GB' },
-    };
+    // Select voice config based on language, fallback to en-US
+    const selectedVoices = VOICE_REGISTRY[language] || VOICE_REGISTRY["en-US"];
 
     for (const line of script) {
         if (!line.line) continue;
 
-        // Determine speaker
         const speakerKey = line.speaker === 'Speaker R' || line.speaker === 'Host' ? 'Host' : 'Guest';
-        const voiceConfig = voiceMap[speakerKey];
+        const voiceConfig = selectedVoices[speakerKey as keyof typeof selectedVoices];
 
         const request = {
             input: { text: line.line },
@@ -46,12 +59,9 @@ export async function POST(req: Request) {
             const [response] = await client.synthesizeSpeech(request);
             if (response.audioContent) {
                 audioBuffers.push(Buffer.from(response.audioContent));
-                
-                // Optional: Add 300ms silence between turns for natural pacing
-                // (We can skip this for MVP to keep it fast)
             }
         } catch (e) {
-            console.error(`Error generating line for ${speakerKey}:`, e);
+            console.error(`Error generating line for ${speakerKey} (${language}):`, e);
         }
     }
 
@@ -59,7 +69,6 @@ export async function POST(req: Request) {
         throw new Error("No audio content generated");
     }
 
-    // Concatenate all buffers
     const finalAudio = Buffer.concat(audioBuffers);
 
     return NextResponse.json({ 
