@@ -6,15 +6,26 @@ import { Presentation, Wand2, Video, Loader2, Play, Save, FileDown } from 'lucid
 import { useSlidesStore } from '@/lib/slidesStore'
 import { Player } from '@remotion/player'
 import { SlideComposition } from '@/components/remotion/SlideComposition'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { saveProject } from '@/lib/projects'
 import { toast } from 'sonner'
 import { exportSlidesToPDF } from '@/lib/pdf'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function CreateSlidesPage() {
-  const { 
-    topic, setTopic, 
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) router.push('/login')
+    }
+    checkUser()
+  }, [router])
+  const {
+    topic, setTopic,
     style, setStyle,
     slideCount, setSlideCount,
     slides, setSlides,
@@ -36,10 +47,10 @@ export default function CreateSlidesPage() {
       })
       const data = await res.json()
       if (data.slides) setSlides(data.slides)
-    } catch (e) { 
+    } catch (e) {
       toast.error("Failed to generate slides")
-    } finally { 
-      setIsGenerating(false) 
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -47,21 +58,21 @@ export default function CreateSlidesPage() {
     if (slides.length === 0) return
     setIsGeneratingVideo(true)
     const newSlides = [...slides]
-    
+
     await Promise.all(newSlides.map(async (slide, index) => {
-        const res = await fetch('/api/podcast/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                script: [{ speaker: 'Presenter', line: slide.speakerNotes }],
-                language: 'en-US' 
-            })
+      const res = await fetch('/api/podcast/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          script: [{ speaker: 'Presenter', line: slide.speakerNotes }],
+          language: 'en-US'
         })
-        const data = await res.json()
-        if (data.audio) {
-            newSlides[index].audioUrl = `data:audio/mp3;base64,${data.audio}`
-            newSlides[index].duration = Math.max(5, slide.speakerNotes.split(' ').length / 2.5) 
-        }
+      })
+      const data = await res.json()
+      if (data.audio) {
+        newSlides[index].audioUrl = `data:audio/mp3;base64,${data.audio}`
+        newSlides[index].duration = Math.max(5, slide.speakerNotes.split(' ').length / 2.5)
+      }
     }))
     setSlides(newSlides)
     setIsGeneratingVideo(false)
@@ -75,7 +86,7 @@ export default function CreateSlidesPage() {
         topic.slice(0, 50) || 'Untitled Slides',
         'slides',
         { topic, style, slides },
-        null 
+        null
       )
       toast.success("Presentation saved to studio!")
     } catch (e) {
@@ -107,7 +118,7 @@ export default function CreateSlidesPage() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <div className="inline-flex items-center gap-2 text-pink-400 mb-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20">
-              <Presentation className="w-3 h-3" /> 
+              <Presentation className="w-3 h-3" />
               <span className="text-[10px] font-bold uppercase tracking-widest">Visual Engine v2</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-pink-100 to-pink-300">
@@ -118,22 +129,22 @@ export default function CreateSlidesPage() {
           <div className="flex gap-3">
             {slides.length > 0 && (
               <>
-                <Button 
-                  onClick={handleExportPDF} 
+                <Button
+                  onClick={handleExportPDF}
                   disabled={isExportingPDF}
-                  variant="outline" 
+                  variant="outline"
                   className="border-white/10 hover:bg-white/5 text-gray-300"
                 >
-                  {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <FileDown className="w-4 h-4 mr-2" />}
+                  {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />}
                   Export PDF
                 </Button>
-                <Button 
-                  onClick={handleSave} 
+                <Button
+                  onClick={handleSave}
                   disabled={isSaving}
-                  variant="outline" 
+                  variant="outline"
                   className="border-pink-500/30 hover:bg-pink-500/10 text-pink-200"
                 >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                   Save Project
                 </Button>
               </>
@@ -147,7 +158,7 @@ export default function CreateSlidesPage() {
             <div className="glass-panel p-6 rounded-3xl space-y-6">
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Presentation Topic</label>
-                <input 
+                <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
@@ -159,7 +170,7 @@ export default function CreateSlidesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Aesthetic</label>
-                  <select 
+                  <select
                     value={style}
                     onChange={(e) => setStyle(e.target.value)}
                     className="w-full h-10 px-3 premium-input bg-black/40 text-sm focus:outline-none"
@@ -171,7 +182,7 @@ export default function CreateSlidesPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Length</label>
-                  <select 
+                  <select
                     value={slideCount}
                     onChange={(e) => setSlideCount(Number(e.target.value))}
                     className="w-full h-10 px-3 premium-input bg-black/40 text-sm focus:outline-none"
@@ -183,7 +194,7 @@ export default function CreateSlidesPage() {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={generateSlides}
                 disabled={isGenerating || !topic}
                 className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 h-12 rounded-xl text-base font-bold shadow-lg shadow-pink-900/20"
@@ -195,7 +206,7 @@ export default function CreateSlidesPage() {
             {slides.length > 0 && (
               <div className="glass-panel p-6 rounded-3xl space-y-4">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Actions</h3>
-                <Button 
+                <Button
                   onClick={generateVideo}
                   disabled={isGeneratingVideo}
                   className="w-full bg-white/5 hover:bg-white/10 border border-white/10 h-12 rounded-xl text-sm font-bold"
@@ -212,7 +223,7 @@ export default function CreateSlidesPage() {
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6 pb-20">
               {slides.length > 0 ? (
                 slides.map((slide, i) => (
-                  <motion.div 
+                  <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}

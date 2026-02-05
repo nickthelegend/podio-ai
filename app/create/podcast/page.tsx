@@ -9,10 +9,21 @@ import { AudioPlayer } from '@/components/AudioPlayer'
 import { motion, AnimatePresence } from 'framer-motion'
 import { saveProject } from '@/lib/projects'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function CreatePodcastPage() {
-  const { 
-    topic, setTopic, 
+  const router = useRouter()
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) router.push('/login')
+    }
+    checkUser()
+  }, [router])
+  const {
+    topic, setTopic,
     language, setLanguage,
     script, setScript,
     audioUrl, setAudioUrl,
@@ -39,10 +50,10 @@ export default function CreatePodcastPage() {
       })
       const data = await res.json()
       if (data.dialogue) setScript(data.dialogue)
-    } catch (e) { 
+    } catch (e) {
       toast.error("Failed to generate script")
-    } finally { 
-      setIsGeneratingScript(false) 
+    } finally {
+      setIsGeneratingScript(false)
     }
   }
 
@@ -57,10 +68,10 @@ export default function CreatePodcastPage() {
       })
       const data = await res.json()
       if (data.audio) setAudioUrl(`data:audio/mp3;base64,${data.audio}`)
-    } catch (e) { 
+    } catch (e) {
       toast.error("Failed to generate audio")
-    } finally { 
-      setIsGeneratingAudio(false) 
+    } finally {
+      setIsGeneratingAudio(false)
     }
   }
 
@@ -89,22 +100,22 @@ export default function CreatePodcastPage() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <div className="inline-flex items-center gap-2 text-purple-400 mb-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-              <Mic className="w-3 h-3" /> 
+              <Mic className="w-3 h-3" />
               <span className="text-[10px] font-bold uppercase tracking-widest">Audio Engine v2</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-purple-300">
               Podcast Studio
             </h1>
           </div>
-          
+
           {script.length > 0 && (
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={isSaving}
-              variant="outline" 
+              variant="outline"
               className="border-purple-500/30 hover:bg-purple-500/10 text-purple-200"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
               Save Project
             </Button>
           )}
@@ -116,7 +127,7 @@ export default function CreatePodcastPage() {
             <div className="glass-panel p-6 rounded-3xl space-y-6 flex-1">
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Topic / Source Material</label>
-                <textarea 
+                <textarea
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   className="w-full h-40 p-4 premium-input bg-black/40 text-sm resize-none focus:outline-none"
@@ -127,7 +138,7 @@ export default function CreatePodcastPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Language</label>
-                  <select 
+                  <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
                     className="w-full h-10 px-3 premium-input bg-black/40 text-sm focus:outline-none"
@@ -146,7 +157,7 @@ export default function CreatePodcastPage() {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={generateScript}
                 disabled={isGeneratingScript || !topic}
                 className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 h-12 rounded-xl text-base font-bold shadow-lg shadow-purple-900/20"
@@ -168,9 +179,9 @@ export default function CreatePodcastPage() {
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-purple-400" /> Script Preview
                 </h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setIsScriptExpanded(!isScriptExpanded)}
                   className="h-6 w-6 p-0 hover:bg-white/10"
                 >
@@ -180,15 +191,15 @@ export default function CreatePodcastPage() {
 
               <AnimatePresence>
                 {isScriptExpanded && (
-                  <motion.div 
-                    initial={{ height: 0 }} 
-                    animate={{ height: 'auto' }} 
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
                     exit={{ height: 0 }}
                     className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-transparent to-black/20"
                   >
                     {script.length > 0 ? (
                       script.map((line, i) => (
-                        <motion.div 
+                        <motion.div
                           key={i}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -229,7 +240,7 @@ export default function CreatePodcastPage() {
                   <AudioPlayer audioUrl={audioUrl} />
                 </div>
               ) : (
-                <Button 
+                <Button
                   onClick={generateAudio}
                   disabled={isGeneratingAudio || script.length === 0}
                   className="w-full bg-white/5 hover:bg-white/10 border border-white/10 h-14 rounded-xl text-base font-bold text-gray-300 hover:text-white transition-all"
