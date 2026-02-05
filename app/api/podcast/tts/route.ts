@@ -1,7 +1,6 @@
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { NextResponse } from "next/server";
 
-// Initialize the client
 const client = new TextToSpeechClient();
 
 export async function POST(req: Request) {
@@ -12,39 +11,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid script format" }, { status: 400 });
     }
 
-    // Voice Configuration
-    // Map speakers to specific Google Cloud Voices
-    const voices = {
-      'Speaker R': { name: 'en-US-Studio-O', gender: 'FEMALE' },
-      'Speaker S': { name: 'en-US-Studio-Q', gender: 'MALE' },
-      // Fallback for Indian languages if selected
-      'hi-IN-R': { name: 'hi-IN-Neural2-A', gender: 'FEMALE' },
-      'hi-IN-S': { name: 'hi-IN-Neural2-B', gender: 'MALE' },
-    };
-
-    // Helper to pick voice based on language and speaker
-    const getVoiceParams = (speaker: string, lang: string) => {
-      if (lang === 'hi-IN') {
-        return speaker === 'Speaker R' ? voices['hi-IN-R'] : voices['hi-IN-S'];
-      }
-      // Default English
-      return speaker === 'Speaker R' ? voices['Speaker R'] : voices['Speaker S'];
-    };
-
-    // Generate audio for each line independently
+    // Sequential Generation Strategy (Reliable Fallback)
+    // We generate audio for each line individually using the correct voice
+    // and then concatenate the buffers.
+    
     const audioBuffers: Buffer[] = [];
+    
+    // Voice Mapping
+    const voiceMap = {
+        'Host': { name: 'en-US-Neural2-D', languageCode: 'en-US' },
+        'Guest': { name: 'en-GB-Neural2-A', languageCode: 'en-GB' },
+        // Fallback for script speaker names
+        'Speaker R': { name: 'en-US-Neural2-D', languageCode: 'en-US' },
+        'Speaker S': { name: 'en-GB-Neural2-A', languageCode: 'en-GB' },
+    };
 
-    // Process lines sequentially to maintain order (Promise.all might mix order if not careful with index)
-    // We use a for-loop for simple sequential processing to ensure order.
     for (const line of script) {
-        if (!line.line || line.line.trim() === '') continue;
+        if (!line.line) continue;
 
-        const voiceParams = getVoiceParams(line.speaker, language);
+        // Determine speaker
+        const speakerKey = line.speaker === 'Speaker R' || line.speaker === 'Host' ? 'Host' : 'Guest';
+        const voiceConfig = voiceMap[speakerKey];
 
         const request = {
             input: { text: line.line },
-            voice: { languageCode: language, name: voiceParams.name },
-            audioConfig: { audioEncoding: "MP3" as const, speakingRate: 1.0 },
+            voice: { 
+                languageCode: voiceConfig.languageCode, 
+                name: voiceConfig.name 
+            },
+            audioConfig: { audioEncoding: "MP3" as const }
         };
 
         try {
@@ -52,12 +47,11 @@ export async function POST(req: Request) {
             if (response.audioContent) {
                 audioBuffers.push(Buffer.from(response.audioContent));
                 
-                // Optional: Add a small silence gap between speakers?
-                // For MVP, we'll just concat. 
-                // A better approach involves generating a silent buffer, but let's keep it simple.
+                // Optional: Add 300ms silence between turns for natural pacing
+                // (We can skip this for MVP to keep it fast)
             }
         } catch (e) {
-            console.error(`Error synthesizing line for ${line.speaker}:`, e);
+            console.error(`Error generating line for ${speakerKey}:`, e);
         }
     }
 
@@ -65,17 +59,17 @@ export async function POST(req: Request) {
         throw new Error("No audio content generated");
     }
 
-    // Concatenate all audio buffers into one single MP3
-    const finalAudioBuffer = Buffer.concat(audioBuffers);
+    // Concatenate all buffers
+    const finalAudio = Buffer.concat(audioBuffers);
 
     return NextResponse.json({ 
-      audio: finalAudioBuffer.toString("base64") 
+      audio: finalAudio.toString("base64") 
     });
 
-  } catch (error) {
-    console.error("Multi-Speaker TTS Error:", error);
+  } catch (error: any) {
+    console.error("TTS Error:", error);
     return NextResponse.json(
-      { error: "Failed to generate audio" },
+      { error: error.message || "Failed to generate audio" },
       { status: 500 }
     );
   }
