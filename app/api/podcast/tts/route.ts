@@ -1,9 +1,7 @@
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { NextResponse } from "next/server";
 
-// Initialize the client. 
-// Ensure GOOGLE_APPLICATION_CREDENTIALS is set in .env.local pointing to your JSON key file
-// OR pass credentials directly if managing via env vars differently.
+// Initialize the client
 const client = new TextToSpeechClient();
 
 export async function POST(req: Request) {
@@ -14,41 +12,68 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid script format" }, { status: 400 });
     }
 
-    // Combine the script into SSML for multi-speaker simulation
-    // Note: Standard Google TTS doesn't support multi-speaker in one request easily like Studio voices might in the future directly via SSML tags for speakers.
-    // For this MVP, we will generate audio for each line and concatenate (or just one voice for now if simpler).
-    // Let's try to make it sound like a conversation by alternating voices if possible, or using SSML with voice tags if supported by the Studio voice.
-    
-    // Using the requested "en-US-Studio-MultiSpeaker" is a specific feature. 
-    // If that specific multi-speaker model is not available via standard API yet, we fallback to standard Studio voices.
-    // Let's assume we iterate and merge. For speed/MVP, let's join text.
-    
-    // Better approach for MVP: Join text with pauses.
-    // Ideally, we'd make parallel calls for R and S with different voice params and merge buffers.
-    
-    const text = script.map((s: any) => `${s.speaker}: ${s.line}`).join("\n\n");
-
-    const request = {
-      input: { text },
-      // Select the language and SSML voice gender (optional)
-      voice: { languageCode: language, name: "en-US-Studio-O" }, // Using a high quality Studio voice as default
-      audioConfig: { audioEncoding: "MP3" as const },
+    // Voice Configuration
+    // Map speakers to specific Google Cloud Voices
+    const voices = {
+      'Speaker R': { name: 'en-US-Studio-O', gender: 'FEMALE' },
+      'Speaker S': { name: 'en-US-Studio-Q', gender: 'MALE' },
+      // Fallback for Indian languages if selected
+      'hi-IN-R': { name: 'hi-IN-Neural2-A', gender: 'FEMALE' },
+      'hi-IN-S': { name: 'hi-IN-Neural2-B', gender: 'MALE' },
     };
 
-    const [response] = await client.synthesizeSpeech(request);
-    const audioContent = response.audioContent;
+    // Helper to pick voice based on language and speaker
+    const getVoiceParams = (speaker: string, lang: string) => {
+      if (lang === 'hi-IN') {
+        return speaker === 'Speaker R' ? voices['hi-IN-R'] : voices['hi-IN-S'];
+      }
+      // Default English
+      return speaker === 'Speaker R' ? voices['Speaker R'] : voices['Speaker S'];
+    };
 
-    if (!audioContent) {
-      throw new Error("No audio content received");
+    // Generate audio for each line independently
+    const audioBuffers: Buffer[] = [];
+
+    // Process lines sequentially to maintain order (Promise.all might mix order if not careful with index)
+    // We use a for-loop for simple sequential processing to ensure order.
+    for (const line of script) {
+        if (!line.line || line.line.trim() === '') continue;
+
+        const voiceParams = getVoiceParams(line.speaker, language);
+
+        const request = {
+            input: { text: line.line },
+            voice: { languageCode: language, name: voiceParams.name },
+            audioConfig: { audioEncoding: "MP3" as const, speakingRate: 1.0 },
+        };
+
+        try {
+            const [response] = await client.synthesizeSpeech(request);
+            if (response.audioContent) {
+                audioBuffers.push(Buffer.from(response.audioContent));
+                
+                // Optional: Add a small silence gap between speakers?
+                // For MVP, we'll just concat. 
+                // A better approach involves generating a silent buffer, but let's keep it simple.
+            }
+        } catch (e) {
+            console.error(`Error synthesizing line for ${line.speaker}:`, e);
+        }
     }
 
-    // Return audio as base64
+    if (audioBuffers.length === 0) {
+        throw new Error("No audio content generated");
+    }
+
+    // Concatenate all audio buffers into one single MP3
+    const finalAudioBuffer = Buffer.concat(audioBuffers);
+
     return NextResponse.json({ 
-      audio: Buffer.from(audioContent).toString("base64") 
+      audio: finalAudioBuffer.toString("base64") 
     });
 
   } catch (error) {
-    console.error("TTS Error:", error);
+    console.error("Multi-Speaker TTS Error:", error);
     return NextResponse.json(
       { error: "Failed to generate audio" },
       { status: 500 }

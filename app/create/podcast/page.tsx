@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Mic, Wand2, Play, Download, Loader2 } from 'lucide-react'
 import { usePodcastStore } from '@/lib/store'
 import { useState } from 'react'
+import { AudioPlayer } from '@/components/AudioPlayer' // New Import
 
 export default function CreatePodcastPage() {
   const { 
@@ -56,6 +57,16 @@ export default function CreatePodcastPage() {
     }
   }
 
+  const handleDownload = () => {
+    if (!audioUrl) return;
+    const link = document.createElement('a');
+    link.href = audioUrl;
+    link.download = `podio-cast-${Date.now()}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
       <Header />
@@ -90,7 +101,6 @@ export default function CreatePodcastPage() {
               >
                 <option value="en-US">English (US)</option>
                 <option value="hi-IN">Hindi (India)</option>
-                <option value="en-IN">English (India)</option>
               </select>
             </div>
 
@@ -124,10 +134,7 @@ export default function CreatePodcastPage() {
 
                 {audioUrl ? (
                   <div className="space-y-4 pt-4 border-t border-white/10">
-                    <audio controls src={audioUrl} className="w-full" />
-                    <Button variant="outline" className="w-full border-white/10 hover:bg-white/5">
-                      <Download className="mr-2 w-4 h-4" /> Download MP3
-                    </Button>
+                    <AudioPlayer audioUrl={audioUrl} onDownload={handleDownload} />
                   </div>
                 ) : (
                   <Button 
