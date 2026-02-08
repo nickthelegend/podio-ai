@@ -109,7 +109,13 @@ export default function CreateSlidesPage() {
         const data = await res.json()
         if (data.audio) {
           newSlides[index].audioUrl = `data:audio/mp3;base64,${data.audio}`
-          newSlides[index].duration = Math.max(5, slide.speakerNotes.split(' ').length / 2.5)
+
+          // Calculate duration based on word count, add buffer for natural pauses
+          // Average speaking rate: ~150 words per minute = 2.5 words per second
+          const wordCount = slide.speakerNotes.split(/\s+/).length
+          const baseDuration = wordCount / 2.2 // Slightly slower for clarity
+          const pauseBuffer = 1.5 // Buffer at the end for natural pause between slides
+          newSlides[index].duration = Math.max(5, baseDuration + pauseBuffer)
         }
 
         setVideoProgress(((index + 1) / totalSlides) * 100)
