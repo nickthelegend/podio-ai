@@ -6,7 +6,7 @@ import { AIChatInput } from '@/components/ui/ai-chat-input'
 import { SlideRenderer } from '@/components/slides/SlideRenderer'
 import { VideoProcessingModal } from '@/components/VideoProcessingModal'
 import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink } from 'lucide-react'
-import { useSlidesStore, generateProjectId } from '@/lib/slidesStore'
+import { useSlidesStore, generateProjectId, EnhancedSlide } from '@/lib/slidesStore'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { saveProject } from '@/lib/projects'
@@ -49,6 +49,29 @@ export default function CreateSlidesPage() {
   const [videoProgress, setVideoProgress] = useState(0)
   const [currentProcessingSlide, setCurrentProcessingSlide] = useState(0)
 
+  // Auto-save helper
+  const autoSaveProject = async (currentSlides: EnhancedSlide[], currentHasVideo: boolean) => {
+    if (!currentSlides.length || !projectId) return;
+
+    try {
+      await saveProject(
+        topic.slice(0, 50) || 'Untitled Slides',
+        'slides',
+        {
+          projectId,
+          topic,
+          style,
+          slides: currentSlides,
+          hasVideo: currentHasVideo
+        },
+        null,
+        projectId
+      )
+    } catch (e) {
+      console.error("Auto-save failed", e);
+    }
+  }
+
   const generateSlides = async (inputTopic?: string) => {
     const topicToUse = inputTopic || topic
     if (!topicToUse) return
@@ -72,6 +95,27 @@ export default function CreateSlidesPage() {
       if (data.slides) {
         setSlides(data.slides)
         setSelectedSlideIndex(0)
+
+        // Auto-save immediately after generation
+        // Note: passing explicit args because state updates might not be flushed yet
+        // But we need to use the newly generated project ID
+        try {
+          await saveProject(
+            topicToUse.slice(0, 50) || 'Untitled Slides',
+            'slides',
+            {
+              projectId: newProjectId,
+              topic: topicToUse,
+              style,
+              slides: data.slides,
+              hasVideo: false
+            },
+            null,
+            newProjectId
+          )
+        } catch (e) {
+          console.error("Initial auto-save failed", e)
+        }
       }
     } catch (e) {
       toast.error("Failed to generate slides")
@@ -124,13 +168,31 @@ export default function CreateSlidesPage() {
       setSlides(newSlides)
       setHasVideo(true)
       setVideoStatus('complete')
+
+      // Auto-save after video generation
+      if (projectId) {
+        await saveProject(
+          topic.slice(0, 50) || 'Untitled Slides',
+          'slides',
+          {
+            projectId,
+            topic,
+            style,
+            slides: newSlides,
+            hasVideo: true
+          },
+          null,
+          projectId
+        )
+      }
+
     } catch (e) {
       setVideoStatus('error')
       toast.error("Failed to generate video")
     }
   }
 
-  const handleSave = async () => {
+  const handleManualSave = async () => {
     if (!slides.length) return
     setIsSaving(true)
 
@@ -347,7 +409,7 @@ export default function CreateSlidesPage() {
                   )}
 
                   <Button
-                    onClick={handleSave}
+                    onClick={handleManualSave}
                     disabled={isSaving}
                     size="sm"
                     className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white"
@@ -375,6 +437,9 @@ export default function CreateSlidesPage() {
                 Video Ready
               </span>
             )}
+            <span className="text-[10px] text-gray-500 ml-auto">
+              Automatic savings enabled
+            </span>
           </div>
         )}
 
@@ -447,8 +512,8 @@ export default function CreateSlidesPage() {
                 key={i}
                 onClick={() => scrollToSlide(i)}
                 className={`w-2.5 h-2.5 rounded-full transition-all ${i === selectedSlideIndex
-                  ? 'bg-pink-500 scale-125'
-                  : 'bg-white/20 hover:bg-white/40'
+                    ? 'bg-pink-500 scale-125'
+                    : 'bg-white/20 hover:bg-white/40'
                   }`}
               />
             ))}
