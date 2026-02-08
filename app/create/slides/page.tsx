@@ -319,6 +319,10 @@ export default function CreateSlidesPage() {
             <AIChatInput
               onSubmit={generateSlides}
               isLoading={isGenerating}
+              title="What presentation can I create for you?"
+              subtitle="Describe your topic and let AI craft beautiful, professional slides with stunning visuals"
+              placeholder="e.g., A pitch deck for my AI-powered fitness app..."
+              label="AI Slide Studio"
             />
           </motion.div>
 
@@ -706,6 +710,7 @@ export default function CreateSlidesPage() {
             onSubmit={generateSlides}
             isLoading={isGenerating}
             isCompact
+            placeholder="Describe your presentation topic..."
           />
         </div>
       </div>

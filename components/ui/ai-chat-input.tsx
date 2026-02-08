@@ -71,6 +71,11 @@ interface AIChatInputProps {
     onSubmit: (topic: string) => void;
     isLoading?: boolean;
     isCompact?: boolean;
+    placeholder?: string;
+    title?: string;
+    subtitle?: string;
+    label?: string;
+    loadingText?: string;
 }
 
 const suggestionTopics = [
@@ -81,7 +86,16 @@ const suggestionTopics = [
     { icon: <Lightbulb className="w-4 h-4" />, label: "Product Launch" },
 ];
 
-export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps) {
+export function AIChatInput({
+    onSubmit,
+    isLoading,
+    isCompact,
+    placeholder = "Describe your topic...",
+    title = "What can I create for you?",
+    subtitle = "Describe your idea and let AI do the work",
+    label = "AI Studio",
+    loadingText = "Generating..."
+}: AIChatInputProps) {
     const [value, setValue] = useState("");
     const { textareaRef, adjustHeight } = useAutoResizeTextarea({
         minHeight: 60,
@@ -121,7 +135,7 @@ export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps
                                 adjustHeight();
                             }}
                             onKeyDown={handleKeyDown}
-                            placeholder="Describe your presentation topic..."
+                            placeholder={placeholder}
                             className={cn(
                                 "w-full px-5 py-4",
                                 "resize-none",
@@ -154,7 +168,7 @@ export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps
                             {isLoading ? (
                                 <>
                                     <Sparkles className="w-4 h-4 animate-pulse" />
-                                    Generating...
+                                    {loadingText}
                                 </>
                             ) : (
                                 <>
@@ -173,14 +187,14 @@ export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps
         <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
             <div className="text-center space-y-4">
                 <div className="inline-flex items-center gap-2 text-pink-400 px-4 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 backdrop-blur-sm">
-                    <Presentation className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">AI Slide Studio</span>
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-widest">{label}</span>
                 </div>
                 <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-pink-100 to-pink-300">
-                    What presentation can I create for you?
+                    {title}
                 </h1>
                 <p className="text-gray-400 text-lg max-w-xl mx-auto">
-                    Describe your topic and let AI craft beautiful, professional slides with stunning visuals
+                    {subtitle}
                 </p>
             </div>
 
@@ -197,7 +211,7 @@ export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps
                                 adjustHeight();
                             }}
                             onKeyDown={handleKeyDown}
-                            placeholder="e.g., A pitch deck for my AI-powered fitness app that helps users track workouts..."
+                            placeholder={placeholder}
                             className={cn(
                                 "w-full px-6 py-5",
                                 "resize-none",
@@ -234,12 +248,12 @@ export function AIChatInput({ onSubmit, isLoading, isCompact }: AIChatInputProps
                             {isLoading ? (
                                 <>
                                     <Sparkles className="w-4 h-4 animate-pulse" />
-                                    Creating Magic...
+                                    {loadingText}
                                 </>
                             ) : (
                                 <>
                                     <ArrowUpIcon className="w-4 h-4" />
-                                    Generate Slides
+                                    Generate
                                 </>
                             )}
                         </button>

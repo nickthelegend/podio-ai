@@ -36,9 +36,13 @@ export async function POST(req: Request) {
 
     const systemInstruction = `You are a professional podcast writer targeting an Indian audience. 
     Your task is to generate a short, engaging podcast-style dialogue (approx 2-3 minutes) between two speakers, Speaker R and Speaker S.
-    The topic is: "${topic}".
+    
+    Source Material/Topic: "${topic}"
+    (Note: If the source material above is a URL, assume it's a link to an article or video and generate a discussion based on its likely content or context. If it's a prompt, follow the instructions in the prompt.)
+
     The language should be: "${language}". 
     If the language is an Indian language (like Hindi, Tamil, etc.), use simple, conversational language mixed with English terms where appropriate (Hinglish/Tanglish style is acceptable if natural).
+    Speaker R should be the Host (curious, leading the conversation) and Speaker S should be the Guest (knowledgeable, sharing insights).
     Make it sound natural, with back-and-forth interaction.`;
 
     const result = await model.generateContent(systemInstruction);
