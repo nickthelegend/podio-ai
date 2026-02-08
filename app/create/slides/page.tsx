@@ -4,10 +4,9 @@ import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { AIChatInput } from '@/components/ui/ai-chat-input'
 import { SlideRenderer } from '@/components/slides/SlideRenderer'
-import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useSlidesStore, EnhancedSlide } from '@/lib/slidesStore'
-import { Player } from '@remotion/player'
-import { SlideComposition } from '@/components/remotion/SlideComposition'
+import { VideoProcessingModal } from '@/components/VideoProcessingModal'
+import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink } from 'lucide-react'
+import { useSlidesStore, generateProjectId } from '@/lib/slidesStore'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { saveProject } from '@/lib/projects'
@@ -29,27 +28,39 @@ export default function CreateSlidesPage() {
   }, [router])
 
   const {
+    projectId, setProjectId,
     topic, setTopic,
     style, setStyle,
     slideCount, setSlideCount,
     slides, setSlides,
     isGenerating, setIsGenerating,
     hasSubmitted, setHasSubmitted,
+    hasVideo, setHasVideo,
     reset
   } = useSlidesStore()
 
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
+
+  // Video processing modal state
+  const [showVideoModal, setShowVideoModal] = useState(false)
+  const [videoStatus, setVideoStatus] = useState<'processing' | 'complete' | 'error'>('processing')
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [currentProcessingSlide, setCurrentProcessingSlide] = useState(0)
 
   const generateSlides = async (inputTopic?: string) => {
     const topicToUse = inputTopic || topic
     if (!topicToUse) return
 
+    // Generate new project ID
+    const newProjectId = generateProjectId()
+    setProjectId(newProjectId)
+
     setTopic(topicToUse)
     setHasSubmitted(true)
     setIsGenerating(true)
+    setHasVideo(false)
 
     try {
       const res = await fetch('/api/slides/generate', {
@@ -71,39 +82,74 @@ export default function CreateSlidesPage() {
 
   const generateVideo = async () => {
     if (slides.length === 0) return
-    setIsGeneratingVideo(true)
-    const newSlides = [...slides]
 
-    await Promise.all(newSlides.map(async (slide, index) => {
-      const res = await fetch('/api/podcast/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          script: [{ speaker: 'Presenter', line: slide.speakerNotes }],
-          language: 'en-US'
+    // Open modal
+    setShowVideoModal(true)
+    setVideoStatus('processing')
+    setVideoProgress(0)
+    setCurrentProcessingSlide(0)
+
+    const newSlides = [...slides]
+    const totalSlides = newSlides.length
+
+    try {
+      for (let index = 0; index < newSlides.length; index++) {
+        setCurrentProcessingSlide(index + 1)
+        setVideoProgress(((index) / totalSlides) * 100)
+
+        const slide = newSlides[index]
+        const res = await fetch('/api/podcast/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            script: [{ speaker: 'Presenter', line: slide.speakerNotes }],
+            language: 'en-US'
+          })
         })
-      })
-      const data = await res.json()
-      if (data.audio) {
-        newSlides[index].audioUrl = `data:audio/mp3;base64,${data.audio}`
-        newSlides[index].duration = Math.max(5, slide.speakerNotes.split(' ').length / 2.5)
+        const data = await res.json()
+        if (data.audio) {
+          newSlides[index].audioUrl = `data:audio/mp3;base64,${data.audio}`
+          newSlides[index].duration = Math.max(5, slide.speakerNotes.split(' ').length / 2.5)
+        }
+
+        setVideoProgress(((index + 1) / totalSlides) * 100)
       }
-    }))
-    setSlides(newSlides)
-    setIsGeneratingVideo(false)
+
+      setSlides(newSlides)
+      setHasVideo(true)
+      setVideoStatus('complete')
+    } catch (e) {
+      setVideoStatus('error')
+      toast.error("Failed to generate video")
+    }
   }
 
   const handleSave = async () => {
     if (!slides.length) return
     setIsSaving(true)
+
+    // Ensure we have a project ID
+    let currentProjectId = projectId
+    if (!currentProjectId) {
+      currentProjectId = generateProjectId()
+      setProjectId(currentProjectId)
+    }
+
     try {
       await saveProject(
         topic.slice(0, 50) || 'Untitled Slides',
         'slides',
-        { topic, style, slides },
-        null
+        {
+          projectId: currentProjectId,
+          topic,
+          style,
+          slides,
+          hasVideo
+        },
+        null,
+        currentProjectId
       )
-      toast.success("Presentation saved to studio!")
+      toast.success("Presentation saved!")
     } catch (e) {
       toast.error("Failed to save project. Please login.")
     } finally {
@@ -129,6 +175,19 @@ export default function CreateSlidesPage() {
     setSelectedSlideIndex(0)
   }
 
+  const handleViewExport = () => {
+    if (projectId) {
+      router.push(`/project/${projectId}/export`)
+    }
+    setShowVideoModal(false)
+  }
+
+  const handleShare = () => {
+    if (projectId) {
+      router.push(`/project/${projectId}/export`)
+    }
+  }
+
   const scrollToSlide = (index: number) => {
     setSelectedSlideIndex(index)
     const slideElements = slidesContainerRef.current?.children
@@ -136,8 +195,6 @@ export default function CreateSlidesPage() {
       slideElements[index].scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
-
-  const totalDuration = slides.reduce((acc, s) => acc + (s.duration ? Math.ceil(s.duration * 30) : 150), 0)
 
   // Initial state - show centered AI chat input
   if (!hasSubmitted) {
@@ -210,6 +267,17 @@ export default function CreateSlidesPage() {
     <div className="min-h-screen bg-[#030014] text-white selection:bg-pink-500/30">
       <Header />
 
+      {/* Video Processing Modal */}
+      <VideoProcessingModal
+        isOpen={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        status={videoStatus}
+        progress={videoProgress}
+        currentSlide={currentProcessingSlide}
+        totalSlides={slides.length}
+        onViewVideo={handleViewExport}
+      />
+
       {/* Fixed Header Bar */}
       <div className="fixed top-16 left-0 right-0 z-30 bg-[#030014]/90 backdrop-blur-xl border-b border-white/5">
         <div className="container mx-auto px-6 py-4 max-w-[1400px]">
@@ -242,12 +310,11 @@ export default function CreateSlidesPage() {
                 <>
                   <Button
                     onClick={generateVideo}
-                    disabled={isGeneratingVideo}
                     variant="outline"
                     size="sm"
                     className="border-white/10 hover:bg-white/5 text-gray-300"
                   >
-                    {isGeneratingVideo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Video className="w-4 h-4 mr-1" />}
+                    <Video className="w-4 h-4 mr-1" />
                     Video
                   </Button>
                   <Button
@@ -260,6 +327,19 @@ export default function CreateSlidesPage() {
                     {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <FileDown className="w-4 h-4 mr-1" />}
                     PDF
                   </Button>
+
+                  {projectId && (
+                    <Button
+                      onClick={handleShare}
+                      variant="outline"
+                      size="sm"
+                      className="border-white/10 hover:bg-white/5 text-gray-300"
+                    >
+                      <Share2 className="w-4 h-4 mr-1" />
+                      Share
+                    </Button>
+                  )}
+
                   <Button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -277,6 +357,21 @@ export default function CreateSlidesPage() {
       </div>
 
       <main className="container mx-auto px-6 pt-36 pb-48 max-w-[1200px]">
+        {/* Project ID Badge */}
+        {projectId && (
+          <div className="mb-6 flex items-center gap-2">
+            <span className="text-xs text-gray-600">Project:</span>
+            <code className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-md font-mono">
+              {projectId}
+            </code>
+            {hasVideo && (
+              <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
+                Video Ready
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Main Content */}
         <AnimatePresence mode="wait">
           {isGenerating ? (
@@ -346,8 +441,8 @@ export default function CreateSlidesPage() {
                 key={i}
                 onClick={() => scrollToSlide(i)}
                 className={`w-2.5 h-2.5 rounded-full transition-all ${i === selectedSlideIndex
-                    ? 'bg-pink-500 scale-125'
-                    : 'bg-white/20 hover:bg-white/40'
+                  ? 'bg-pink-500 scale-125'
+                  : 'bg-white/20 hover:bg-white/40'
                   }`}
               />
             ))}

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
-const enhancedSlideSchema: Schema = {
+const slideSchema: Schema = {
   type: SchemaType.OBJECT,
   properties: {
     slides: {
@@ -11,189 +11,182 @@ const enhancedSlideSchema: Schema = {
       items: {
         type: SchemaType.OBJECT,
         properties: {
-          title: { type: SchemaType.STRING },
-          speakerNotes: { type: SchemaType.STRING },
-          htmlContent: { type: SchemaType.STRING },
-          layoutType: { type: SchemaType.STRING },
-          bullets: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-          backgroundColor: { type: SchemaType.STRING },
-          textColor: { type: SchemaType.STRING },
-          accentColor: { type: SchemaType.STRING },
+          title: {
+            type: SchemaType.STRING,
+            description: "Compelling, attention-grabbing title for the slide"
+          },
+          layoutType: {
+            type: SchemaType.STRING,
+            description: "Layout type: 'title' for opening, 'statistics' for numbers/data, 'content' for bullet points, 'conclusion' for closing"
+          },
+          bullets: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description: "3-5 key points. For statistics layout, use format 'VALUE: Description' (e.g., '85%: Companies using AI')"
+          },
+          speakerNotes: {
+            type: SchemaType.STRING,
+            description: "Detailed talking points for the presenter, 50-80 words, conversational tone"
+          },
+          backgroundColor: {
+            type: SchemaType.STRING,
+            description: "Primary background color in hex format (e.g., #0a0a0f)"
+          },
+          textColor: {
+            type: SchemaType.STRING,
+            description: "Text color in hex format (e.g., #ffffff)"
+          },
+          accentColor: {
+            type: SchemaType.STRING,
+            description: "Accent color for highlights and decorations in hex format (e.g., #ec4899)"
+          },
+          gradient: {
+            type: SchemaType.STRING,
+            description: "CSS gradient for background (e.g., 'linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)')"
+          },
+          subtitle: {
+            type: SchemaType.STRING,
+            description: "Optional subtitle or tagline for title slides"
+          },
+          description: {
+            type: SchemaType.STRING,
+            description: "Optional longer description text"
+          }
         },
-        required: ["title", "speakerNotes", "htmlContent", "layoutType", "bullets", "backgroundColor", "textColor", "accentColor"],
+        required: ["title", "layoutType", "bullets", "speakerNotes", "backgroundColor", "textColor", "accentColor"],
       },
     },
   },
   required: ["slides"],
 };
 
+const stylePresets: Record<string, { colors: string; vibe: string }> = {
+  Modern: {
+    colors: "Dark backgrounds (#0a0a0f, #1a1a2e), pink accent (#ec4899), purple secondary (#8b5cf6), white text",
+    vibe: "Sleek, tech-forward, gradient-rich, glassmorphism effects"
+  },
+  Dark: {
+    colors: "Pure black (#000000, #0a0a0a), neon green accent (#00ff88), cyan secondary (#00d4ff), white text",
+    vibe: "Cyberpunk, high-contrast, neon glows, futuristic"
+  },
+  Corporate: {
+    colors: "Navy backgrounds (#1e3a5f, #2d3748), teal accent (#38b2ac), orange secondary (#ed8936), white text",
+    vibe: "Professional, trustworthy, clean lines, subtle gradients"
+  },
+  Creative: {
+    colors: "Vibrant purples (#4c1d95, #7c3aed), orange accent (#f97316), pink secondary (#ec4899), white text",
+    vibe: "Bold, artistic, playful, dynamic gradients, energetic"
+  },
+  Minimal: {
+    colors: "Light backgrounds (#ffffff, #f5f5f5), black accent (#000000), gray secondary (#6b7280), dark text (#111111)",
+    vibe: "Clean, spacious, typography-focused, subtle shadows"
+  }
+};
+
 export async function POST(req: Request) {
   try {
     const { topic, count = 5, style = "Modern" } = await req.json();
+    const preset = stylePresets[style] || stylePresets.Modern;
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: enhancedSlideSchema,
-        temperature: 0.9,
+        responseSchema: slideSchema,
+        temperature: 0.85,
       },
     });
 
-    const prompt = `You are a WORLD-CLASS presentation designer creating BREATHTAKING slides. Your slides make audiences gasp. Your designs win awards.
+    const prompt = `You are a world-class presentation designer and content strategist creating STUNNING, IMPACTFUL slides.
 
-## YOUR MISSION
-Create ${count} STUNNING slides about: "${topic}"
-Style: ${style}
+## TOPIC: "${topic}"
+## STYLE: ${style}
+## SLIDES TO CREATE: ${count}
 
-## CRITICAL: CONTENT REQUIREMENTS
+## STYLE GUIDE
+**Colors:** ${preset.colors}
+**Vibe:** ${preset.vibe}
 
-### RESEARCH & DATA
-For EVERY slide, include:
-- **Real statistics** with sources (e.g., "85% of Fortune 500 companies..." - Forbes 2024)
-- **Specific numbers** that impress (revenue figures, growth percentages, user counts)
-- **Industry insights** that sound authoritative
-- **Compelling facts** that make people want to learn more
+## CONTENT REQUIREMENTS
 
-### CONTENT QUALITY
+### MAKE IT IMPRESSIVE
+- Include REAL statistics with credible sources (Forbes, McKinsey, Gartner, etc.)
+- Use specific numbers that impress (revenue figures, growth rates, user counts)
+- Add industry insights and compelling facts
 - Write like a TED speaker - clear, punchy, memorable
-- Use power words: "Revolutionary", "Unprecedented", "Game-changing"
-- Include metaphors and analogies
-- Every bullet should be quotable
+- Use power words: Revolutionary, Unprecedented, Game-changing, Transformative
 
-## CRITICAL: VISUAL DESIGN REQUIREMENTS
+### SLIDE STRUCTURE
 
-### HTML STRUCTURE
-Each slide's htmlContent must be a complete, self-contained HTML div:
+**Slide 1 - Title (layoutType: "title")**
+- Create a powerful, memorable title (max 8 words)
+- Add an inspiring subtitle
+- Set the stage for the entire presentation
+- Use the most striking gradient from the color palette
 
-\`\`\`html
-<div style="width:100%;height:100%;position:relative;overflow:hidden;background:[GRADIENT];font-family:'Segoe UI',system-ui,sans-serif;">
-  <!-- LAYER 1: Background Effects -->
-  <!-- LAYER 2: Decorative Shapes -->  
-  <!-- LAYER 3: Main Content -->
-</div>
-\`\`\`
+**Slides 2-${count - 1} - Mix of Content & Statistics**
+- Alternate between "content" and "statistics" layouts
+- For STATISTICS slides: Use bullets like "85%: Companies adopting AI by 2025 - Gartner"
+- For CONTENT slides: Use action-oriented bullet points
+- Include 3-5 bullets per slide
+- Each bullet should be quotable and memorable
 
-### DESIGN ELEMENTS TO USE
+**Slide ${count} - Conclusion (layoutType: "conclusion")**
+- Bold statement or call-to-action
+- Key takeaways as short, punchy phrases
+- End with impact - leave them wanting more
 
-**BACKGROUNDS (pick creative combinations):**
-- Mesh gradients: \`background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\`
-- Radial glows: \`background: radial-gradient(ellipse at top right, rgba(236,72,153,0.4) 0%, transparent 50%);\`
-- Layered gradients: Multiple positioned gradients
-
-**DECORATIVE SHAPES:**
-- Glowing orbs: \`position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.3) 0%,transparent 70%);filter:blur(40px);\`
-- Grid patterns: \`background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:50px 50px;\`
-- Floating lines: Diagonal accent lines with gradients
-- Geometric shapes: Rotated squares, hexagons with border only
-
-**TYPOGRAPHY:**
-- Huge numbers: \`font-size:120px;font-weight:900;background:linear-gradient(135deg,#fff,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;\`
-- Gradient text for emphasis
-- Letter-spacing for headings: \`letter-spacing:-0.02em;\`
-- Text shadows for depth: \`text-shadow:0 4px 30px rgba(0,0,0,0.3);\`
-
-**CARDS & CONTAINERS:**
-- Glass cards: \`background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;\`
-- Accent borders: \`border-left:4px solid #ec4899;\`
-- Subtle shadows: \`box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);\`
-
-**ICONS (use emoji creatively):**
-📊 💡 🚀 ⚡ 🎯 💎 🔥 ✨ 📈 🏆 💰 🌟 🔮 💫 ⭐
-
-## SLIDE LAYOUTS
-
-### SLIDE 1: TITLE (Hero Opening)
-- Massive centered title with gradient text
-- Animated-looking decorative orbs in corners
-- Subtle tagline below
-- Eye-catching accent shapes
-
-Example:
-\`\`\`html
-<div style="width:100%;height:100%;position:relative;overflow:hidden;background:linear-gradient(135deg,#0f0f1a 0%,#1a1a2e 50%,#0a0a14 100%);font-family:'Segoe UI',system-ui,sans-serif;">
-  <div style="position:absolute;top:-100px;right:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(236,72,153,0.15) 0%,transparent 70%);border-radius:50%;"></div>
-  <div style="position:absolute;bottom:-150px;left:-150px;width:600px;height:600px;background:radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%);border-radius:50%;"></div>
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:60px 60px;"></div>
-  <div style="position:relative;z-index:10;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px;">
-    <div style="font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:0.3em;color:#ec4899;margin-bottom:24px;padding:8px 20px;background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.2);border-radius:100px;">✨ Presentation</div>
-    <h1 style="font-size:72px;font-weight:800;line-height:1.1;margin:0;background:linear-gradient(135deg,#ffffff 0%,#ec4899 50%,#8b5cf6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;">The Future of AI</h1>
-    <p style="font-size:24px;color:rgba(255,255,255,0.6);margin-top:24px;max-width:600px;">Transforming industries with intelligent automation</p>
-  </div>
-</div>
-\`\`\`
-
-### SLIDE 2-${count - 1}: CONTENT SLIDES
-Mix these layouts creatively:
-
-**STATISTICS LAYOUT:**
-- 2-3 huge numbers in glass cards
-- Each with gradient coloring
-- Supporting context text
-
-**KEY POINTS LAYOUT:**
-- Numbered cards (01, 02, 03) with accent borders
-- Icon + title + description format
-- Staggered or grid arrangement
-
-**COMPARISON LAYOUT:**
-- Left vs Right with "VS" divider
-- Contrasting colors for each side
-
-**TIMELINE/PROCESS:**
-- Horizontal or vertical flow
-- Connected with lines or arrows
-- Numbered steps
-
-### SLIDE ${count}: CONCLUSION (Call to Action)
-- Bold statement or question
-- Key takeaways as pill badges
-- Memorable closing line
-
-## COLOR PALETTES BY STYLE
-
-**Modern (Default):**
-- Background: #0a0a0f → #1a1a2e
-- Accent: #ec4899 (pink), #8b5cf6 (purple)
-- Text: #ffffff, rgba(255,255,255,0.7)
-
-**Dark:**
-- Background: #000000 → #0a0a0a
-- Accent: #00ff88 (neon green), #00d4ff (cyan)
-- Text: #ffffff
-
-**Corporate:**
-- Background: #1e3a5f → #2d3748
-- Accent: #38b2ac (teal), #ed8936 (orange)
-- Text: #ffffff
-
-**Creative:**
-- Background: Vibrant gradients
-- Accent: #f97316, #ec4899, #8b5cf6
-- Text: varies
-
-**Minimal:**
-- Background: #ffffff → #f5f5f5
-- Accent: #000000, #1a1a1a
-- Text: #111111
-
-## SPEAKER NOTES
+### SPEAKER NOTES
 Write 50-80 words per slide:
-- Conversational tone
-- Key talking points
-- Transition phrases
-- Statistics to emphasize verbally
+- Conversational, engaging tone
+- Key talking points and transitions
+- Stats to emphasize verbally
+- Questions to ask the audience
 
-## FINAL CHECKLIST
-✓ Every slide has WOW factor
-✓ Real data and statistics included
-✓ Professional, authoritative content
-✓ Stunning visual effects
-✓ Consistent color theme
-✓ Clear visual hierarchy
-✓ Mobile-friendly (percentage-based sizing)
+### COLOR GUIDELINES
+- Use the style's color palette consistently
+- backgroundColor: Primary slide background (dark shade)
+- textColor: Main text color (usually white for dark themes)
+- accentColor: For highlights, numbers, decorations (vibrant color)
+- gradient: Beautiful CSS gradient combining background colors
 
-NOW CREATE ${count} ABSOLUTELY STUNNING SLIDES!`;
+## EXAMPLE OUTPUTS
+
+For a statistics slide:
+{
+  "title": "The AI Revolution in Numbers",
+  "layoutType": "statistics",
+  "bullets": [
+    "85%: Enterprise AI adoption by 2025 - Gartner",
+    "$15.7T: Global AI economic impact - PwC",
+    "40%: Productivity boost from AI tools - McKinsey",
+    "10x: Faster decision making with AI analytics"
+  ],
+  "speakerNotes": "These numbers tell a compelling story. The 85% adoption rate means if you're not implementing AI now, you're falling behind. And look at that economic impact - 15.7 trillion dollars. That's not a typo. This is the biggest technological shift since the internet.",
+  "backgroundColor": "#0a0a0f",
+  "textColor": "#ffffff",
+  "accentColor": "#ec4899",
+  "gradient": "linear-gradient(135deg, #0a0a0f 0%, #1a0a20 100%)"
+}
+
+For a content slide:
+{
+  "title": "Key Implementation Strategies",
+  "layoutType": "content",
+  "bullets": [
+    "Start with high-impact, low-risk pilot projects",
+    "Build cross-functional AI literacy programs",
+    "Establish clear governance and ethical guidelines",
+    "Create feedback loops for continuous improvement"
+  ],
+  "speakerNotes": "Implementation is where theory meets reality. Start small but think big. The pilot project approach lets you prove value quickly while building organizational confidence. Remember, AI transformation is a marathon, not a sprint.",
+  "backgroundColor": "#0f0f1a",
+  "textColor": "#ffffff",
+  "accentColor": "#8b5cf6",
+  "gradient": "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)"
+}
+
+NOW CREATE ${count} ABSOLUTELY STUNNING SLIDES ABOUT "${topic}"!`;
 
     const result = await model.generateContent(prompt);
     const response = result.response;
