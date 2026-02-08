@@ -1,10 +1,10 @@
 
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, type Schema } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 
-const slideSchema = {
+const slideSchema: Schema = {
   type: SchemaType.OBJECT,
   properties: {
     slides: {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const { topic, count = 5, style = "Modern" } = await req.json();
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: slideSchema,

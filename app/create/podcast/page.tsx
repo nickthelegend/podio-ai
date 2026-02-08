@@ -2,7 +2,7 @@
 
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
-import { Mic, Wand2, Play, Download, Loader2, MessageSquare, ChevronDown, ChevronUp, Save, Languages } from 'lucide-react'
+import { Mic, Wand2, Play, Download, Loader2, MessageSquare, ChevronDown, ChevronUp, Save, Languages, FileText } from 'lucide-react'
 import { usePodcastStore } from '@/lib/store'
 import { useState, useRef, useEffect } from 'react'
 import { AudioPlayer } from '@/components/AudioPlayer'
@@ -90,6 +90,21 @@ export default function CreatePodcastPage() {
     }
   }
 
+  const exportTranscript = () => {
+    if (!script.length) return
+    const content = script.map(line => `${line.speaker}: ${line.line}`).join('\n\n')
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${topic.slice(0, 30).replace(/\s+/g, '_')}_transcript.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success("Transcript exported!")
+  }
+
   return (
     <div className="min-h-screen bg-[#030014] text-white selection:bg-purple-500/30">
       <Header />
@@ -105,17 +120,29 @@ export default function CreatePodcastPage() {
             </h1>
           </div>
           
-          {script.length > 0 && (
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving}
-              variant="outline" 
-              className="border-purple-500/30 hover:bg-purple-500/10 text-purple-200"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
-              Save Project
-            </Button>
-          )}
+          <div className="flex gap-3">
+            {script.length > 0 && (
+              <>
+                <Button 
+                  onClick={exportTranscript}
+                  variant="outline" 
+                  className="border-white/10 hover:bg-white/5 text-gray-300"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export Transcript
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving}
+                  variant="outline" 
+                  className="border-purple-500/30 hover:bg-purple-500/10 text-purple-200"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+                  Save Project
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-16rem)]">

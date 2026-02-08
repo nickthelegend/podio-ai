@@ -98,12 +98,30 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <h4 className="font-medium text-lg">{project.title}</h4>
-                      <p className="text-xs text-gray-500">
-                        {new Date(project.created_at).toLocaleDateString()} • {project.type === 'slides' ? 'Presentation' : 'Audio Script'}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-500">
+                          {new Date(project.created_at).toLocaleDateString()} • {project.type === 'slides' ? 'Presentation' : 'Audio Script'}
+                        </p>
+                        {project.audio_url && (
+                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[8px] font-bold uppercase tracking-wider border border-green-500/20">
+                            Audio Ready
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/project/${project.id}`)
+                        toast.success("Share link copied!")
+                      }}
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-gray-400 hover:text-white"
+                    >
+                      Share
+                    </Button>
                     <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
                       Edit
                     </Button>

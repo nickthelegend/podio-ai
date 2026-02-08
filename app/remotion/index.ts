@@ -1,12 +1,12 @@
 import { registerRoot } from 'remotion';
-import { SlideComposition } from '@/components/remotion/SlideComposition';
+import { SlideComposition } from '../../components/remotion/SlideComposition';
+import React from 'react';
 
 export const RemotionRoot: React.FC = () => {
-  return (
-    <>
-      {/* This composition is dynamic and will be driven by props passed from the player */}
-      <SlideComposition slides={[]} /> 
-    </>
+  return React.createElement(
+    React.Fragment,
+    null,
+    React.createElement(SlideComposition, { slides: [] })
   );
 };
 
