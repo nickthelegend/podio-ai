@@ -36,6 +36,10 @@ export function Header() {
             <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white transition-colors">
               Studio
             </Link>
+            <Link href="/create/content" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+              <span className="bg-pink-500/10 text-pink-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-pink-500/20">New</span>
+              Social Studio
+            </Link>
           </nav>
         </div>
 

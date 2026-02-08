@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { AIChatInput } from '@/components/ui/ai-chat-input'
 import { SlideRenderer } from '@/components/slides/SlideRenderer'
 import { VideoProcessingModal } from '@/components/VideoProcessingModal'
-import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink } from 'lucide-react'
+import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink, Wand2 } from 'lucide-react'
 import { useSlidesStore, generateProjectId, EnhancedSlide } from '@/lib/slidesStore'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -40,6 +40,7 @@ export default function CreateSlidesPage() {
   } = useSlidesStore()
 
   const [isSaving, setIsSaving] = useState(false)
+  const [isRefining, setIsRefining] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
 
@@ -512,8 +513,8 @@ export default function CreateSlidesPage() {
                 key={i}
                 onClick={() => scrollToSlide(i)}
                 className={`w-2.5 h-2.5 rounded-full transition-all ${i === selectedSlideIndex
-                    ? 'bg-pink-500 scale-125'
-                    : 'bg-white/20 hover:bg-white/40'
+                  ? 'bg-pink-500 scale-125'
+                  : 'bg-white/20 hover:bg-white/40'
                   }`}
               />
             ))}
@@ -531,15 +532,74 @@ export default function CreateSlidesPage() {
 
       {/* Speaker Notes Panel - Fixed at bottom right */}
       {slides.length > 0 && !isGenerating && (
-        <div className="fixed bottom-24 right-6 z-40 w-80 bg-neutral-900/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Speaker Notes
-            </h4>
-            <span className="text-xs text-pink-400">Slide {selectedSlideIndex + 1}</span>
+        <div className="fixed bottom-24 right-6 z-40 w-80 bg-neutral-900/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden group">
+          <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/5">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Speaker Notes
+              </h4>
+              {/* Refinement Menu */}
+              <div className="relative group/menu">
+                <button
+                  disabled={isRefining}
+                  className="p-1 hover:bg-white/10 rounded-md text-pink-400 disabled:opacity-50 transition-colors"
+                >
+                  {isRefining ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                </button>
+
+                {/* Hover Menu */}
+                <div className="absolute left-0 bottom-full mb-2 w-48 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-xl overflow-hidden hidden group-hover/menu:block z-50">
+                  <div className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider border-b border-white/5">
+                    Rewrite Tone
+                  </div>
+                  {['Professional', 'Funny/Witty', 'Concise', 'Engaging', 'Academic'].map((tone) => (
+                    <button
+                      key={tone}
+                      onClick={async () => {
+                        if (isRefining) return;
+                        setIsRefining(true);
+                        try {
+                          const currentNotes = slides[selectedSlideIndex].speakerNotes;
+                          const res = await fetch('/api/refine-script', {
+                            method: 'POST',
+                            body: JSON.stringify({ text: currentNotes, style: tone })
+                          });
+                          const data = await res.json();
+                          if (data.refinedText) {
+                            const newSlides = [...slides];
+                            newSlides[selectedSlideIndex].speakerNotes = data.refinedText;
+                            setSlides(newSlides);
+                            toast.success(`Script updated to ${tone} style!`);
+
+                            // Auto-save
+                            if (projectId) {
+                              await saveProject(
+                                topic,
+                                'slides',
+                                { projectId, topic, style, slides: newSlides, hasVideo },
+                                null,
+                                projectId
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          toast.error("Failed to refine script");
+                        } finally {
+                          setIsRefining(false);
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-pink-500/20 hover:text-pink-200 transition-colors"
+                    >
+                      {tone}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <span className="text-xs text-pink-400 font-mono">Slide {selectedSlideIndex + 1}</span>
           </div>
-          <div className="px-4 py-3 max-h-32 overflow-y-auto custom-scrollbar">
-            <p className="text-sm text-gray-300 leading-relaxed">
+          <div className="px-4 py-3 max-h-48 overflow-y-auto custom-scrollbar">
+            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
               {slides[selectedSlideIndex]?.speakerNotes}
             </p>
           </div>
