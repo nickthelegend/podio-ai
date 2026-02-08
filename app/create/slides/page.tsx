@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { AIChatInput } from '@/components/ui/ai-chat-input'
 import { SlideRenderer } from '@/components/slides/SlideRenderer'
 import { VideoProcessingModal } from '@/components/VideoProcessingModal'
-import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink, Wand2 } from 'lucide-react'
+import { BrandSettingsModal } from '@/components/brand/BrandSettingsModal'
+import { Presentation, Video, Loader2, Save, FileDown, Sparkles, RotateCcw, ChevronLeft, ChevronRight, Share2, ExternalLink, Wand2, Palette } from 'lucide-react'
 import { useSlidesStore, generateProjectId, EnhancedSlide } from '@/lib/slidesStore'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -23,6 +24,20 @@ export default function CreateSlidesPage() {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) router.push('/login')
+
+      // Load Brand Kit if logged in
+      if (user) {
+        const { data } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single()
+        if (data) {
+          useSlidesStore.getState().setBrand({
+            name: data.name,
+            primaryColor: data.primary_color,
+            secondaryColor: data.secondary_color,
+            fontFamily: data.font_family,
+            logoUrl: data.logo_url
+          })
+        }
+      }
     }
     checkUser()
   }, [router])
@@ -31,6 +46,8 @@ export default function CreateSlidesPage() {
     projectId, setProjectId,
     topic, setTopic,
     style, setStyle,
+    format, setFormat,
+    brand, setBrand,
     slideCount, setSlideCount,
     slides, setSlides,
     isGenerating, setIsGenerating,
@@ -42,6 +59,7 @@ export default function CreateSlidesPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false)
   const [selectedSlideIndex, setSelectedSlideIndex] = useState(0)
 
   // Video processing modal state
@@ -51,7 +69,7 @@ export default function CreateSlidesPage() {
   const [currentProcessingSlide, setCurrentProcessingSlide] = useState(0)
 
   // Auto-save helper
-  const autoSaveProject = async (currentSlides: EnhancedSlide[], currentHasVideo: boolean) => {
+  const autoSaveProject = async (currentSlides: EnhancedSlide[], currentHasVideo: boolean, currentBrand?: any) => {
     if (!currentSlides.length || !projectId) return;
 
     try {
@@ -62,6 +80,8 @@ export default function CreateSlidesPage() {
           projectId,
           topic,
           style,
+          format,
+          brand: currentBrand || brand,
           slides: currentSlides,
           hasVideo: currentHasVideo
         },
@@ -108,6 +128,8 @@ export default function CreateSlidesPage() {
               projectId: newProjectId,
               topic: topicToUse,
               style,
+              format,
+              brand,
               slides: data.slides,
               hasVideo: false
             },
@@ -179,6 +201,8 @@ export default function CreateSlidesPage() {
             projectId,
             topic,
             style,
+            format,
+            brand,
             slides: newSlides,
             hasVideo: true
           },
@@ -212,6 +236,8 @@ export default function CreateSlidesPage() {
           projectId: currentProjectId,
           topic,
           style,
+          format,
+          brand,
           slides,
           hasVideo
         },
@@ -230,7 +256,7 @@ export default function CreateSlidesPage() {
     if (!slides.length) return
     setIsExportingPDF(true)
     try {
-      await exportSlidesToPDF(slides, topic || 'Presentation')
+      await exportSlidesToPDF(slides, topic || 'Presentation', format, brand)
       toast.success("PDF Downloaded!")
     } catch (e) {
       toast.error("Failed to export PDF")
@@ -270,6 +296,12 @@ export default function CreateSlidesPage() {
     return (
       <div className="min-h-screen bg-[#030014] text-white selection:bg-pink-500/30">
         <Header />
+        <BrandSettingsModal
+          isOpen={isBrandModalOpen}
+          onClose={() => setIsBrandModalOpen(false)}
+          onSave={(b) => setBrand(b)}
+          currentBrand={brand}
+        />
 
         {/* Ambient Background */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -295,8 +327,17 @@ export default function CreateSlidesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="mt-8 flex items-center gap-4 text-sm"
+            className="mt-8 flex flex-wrap justify-center items-center gap-4 text-sm"
           >
+            {/* Brand Kit Toggle */}
+            <button
+              onClick={() => setIsBrandModalOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${brand ? 'bg-pink-500/20 border-pink-500 text-pink-200' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+            >
+              <Palette className="w-4 h-4" />
+              {brand ? brand.name : 'Brand Kit'}
+            </button>
+
             <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
               <span className="text-gray-400">Style:</span>
               <select
@@ -309,6 +350,19 @@ export default function CreateSlidesPage() {
                 <option value="Corporate" className="bg-neutral-900">Corporate</option>
                 <option value="Creative" className="bg-neutral-900">Creative</option>
                 <option value="Minimal" className="bg-neutral-900">Minimal</option>
+              </select>
+            </div>
+
+            {/* Format Selector */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+              <span className="text-gray-400">Format:</span>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as any)}
+                className="bg-transparent text-white focus:outline-none cursor-pointer"
+              >
+                <option value="16:9" className="bg-neutral-900">Standard (16:9)</option>
+                <option value="4:5" className="bg-neutral-900">LinkedIn (4:5)</option>
               </select>
             </div>
 
@@ -335,6 +389,16 @@ export default function CreateSlidesPage() {
   return (
     <div className="min-h-screen bg-[#030014] text-white selection:bg-pink-500/30">
       <Header />
+      <BrandSettingsModal
+        isOpen={isBrandModalOpen}
+        onClose={() => setIsBrandModalOpen(false)}
+        onSave={(b) => {
+          setBrand(b);
+          // Trigger auto-save to persist brand choice
+          autoSaveProject(slides, hasVideo, b);
+        }}
+        currentBrand={brand}
+      />
 
       {/* Video Processing Modal */}
       <VideoProcessingModal
@@ -364,7 +428,34 @@ export default function CreateSlidesPage() {
               </span>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {/* Brand Button */}
+              <Button
+                onClick={() => setIsBrandModalOpen(true)}
+                variant="ghost"
+                size="sm"
+                className={`hidden md:flex items-center gap-2 ${brand ? 'text-pink-400' : 'text-gray-400'}`}
+              >
+                <Palette className="w-4 h-4" />
+                <span className="text-xs">{brand ? 'Edit Brand' : 'Brand Kit'}</span>
+              </Button>
+
+              {/* Format Switcher */}
+              <div className="hidden md:flex items-center bg-white/5 rounded-lg border border-white/10 p-1 mr-2">
+                <button
+                  onClick={() => setFormat('16:9')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${format === '16:9' ? 'bg-pink-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  16:9
+                </button>
+                <button
+                  onClick={() => setFormat('4:5')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${format === '4:5' ? 'bg-pink-500 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                  LinkedIn
+                </button>
+              </div>
+
               <Button
                 onClick={handleReset}
                 variant="outline"
@@ -477,6 +568,8 @@ export default function CreateSlidesPage() {
                   key={i}
                   slide={slide}
                   index={i}
+                  format={format}
+                  brand={brand}
                   isSelected={selectedSlideIndex === i}
                   onClick={() => setSelectedSlideIndex(i)}
                 />
@@ -576,7 +669,7 @@ export default function CreateSlidesPage() {
                               await saveProject(
                                 topic,
                                 'slides',
-                                { projectId, topic, style, slides: newSlides, hasVideo },
+                                { projectId, topic, style, slides: newSlides, hasVideo, brand },
                                 null,
                                 projectId
                               );

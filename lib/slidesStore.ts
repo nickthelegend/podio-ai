@@ -11,6 +11,14 @@ export interface Slide {
   duration?: number;
 }
 
+export interface BrandKit {
+  name?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  logoUrl?: string;
+}
+
 export interface EnhancedSlide extends Slide {
   layoutType: 'title' | 'content' | 'quote' | 'statistics' | 'timeline' | 'image' | 'comparison' | 'conclusion';
   gradient?: string;
@@ -26,7 +34,9 @@ export interface Project {
   id: string;
   topic: string;
   style: string;
+  format: '16:9' | '4:5' | '9:16';
   slides: EnhancedSlide[];
+  brand?: BrandKit;
   createdAt: string;
   updatedAt: string;
   hasVideo: boolean;
@@ -37,6 +47,8 @@ interface SlidesState {
   projectId: string | null;
   topic: string;
   style: string;
+  format: '16:9' | '4:5' | '9:16';
+  brand: BrandKit | null;
   slideCount: number;
   slides: EnhancedSlide[];
   isGenerating: boolean;
@@ -47,6 +59,8 @@ interface SlidesState {
   setProjectId: (id: string | null) => void;
   setTopic: (topic: string) => void;
   setStyle: (style: string) => void;
+  setFormat: (format: '16:9' | '4:5' | '9:16') => void;
+  setBrand: (brand: BrandKit | null) => void;
   setSlideCount: (count: number) => void;
   setSlides: (slides: EnhancedSlide[]) => void;
   setIsGenerating: (isGenerating: boolean) => void;
@@ -75,6 +89,8 @@ export const useSlidesStore = create<SlidesState>()(
       projectId: null,
       topic: '',
       style: 'Modern',
+      format: '16:9',
+      brand: null,
       slideCount: 5,
       slides: [],
       isGenerating: false,
@@ -84,6 +100,8 @@ export const useSlidesStore = create<SlidesState>()(
       setProjectId: (projectId) => set({ projectId }),
       setTopic: (topic) => set({ topic }),
       setStyle: (style) => set({ style }),
+      setFormat: (format) => set({ format }),
+      setBrand: (brand) => set({ brand }),
       setSlideCount: (slideCount) => set({ slideCount }),
       setSlides: (slides) => set({ slides }),
       setIsGenerating: (isGenerating) => set({ isGenerating }),
@@ -99,6 +117,8 @@ export const useSlidesStore = create<SlidesState>()(
         projectId: project.id,
         topic: project.topic,
         style: project.style,
+        format: project.format || '16:9',
+        brand: project.brand || null,
         slides: project.slides,
         hasSubmitted: true,
         hasVideo: project.hasVideo,
@@ -112,11 +132,13 @@ export const useSlidesStore = create<SlidesState>()(
           id: state.projectId,
           topic: state.topic,
           style: state.style,
+          format: state.format,
           slides: state.slides,
+          brand: state.brand,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           hasVideo: state.hasVideo,
-        };
+        } as any;
       },
 
       reset: () => set({
@@ -126,6 +148,8 @@ export const useSlidesStore = create<SlidesState>()(
         isGenerating: false,
         hasSubmitted: false,
         hasVideo: false,
+        brand: null,
+        format: '16:9',
       }),
     }),
     {
@@ -136,6 +160,8 @@ export const useSlidesStore = create<SlidesState>()(
         style: state.style,
         slides: state.slides,
         hasVideo: state.hasVideo,
+        format: state.format,
+        brand: state.brand,
       }),
     }
   )

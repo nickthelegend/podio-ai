@@ -1,76 +1,84 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { Slide } from './slidesStore';
+import { jsPDF } from 'jspdf';
+import { Slide, BrandKit } from './slidesStore';
 
-export const exportSlidesToPDF = async (slides: Slide[], topic: string) => {
+export const exportSlidesToPDF = async (
+  slides: Slide[],
+  topic: string,
+  format: '16:9' | '4:5' | '9:16' = '16:9',
+  brand?: BrandKit | null
+) => {
+  // Dimensions map
+  const dimensions = {
+    '16:9': { w: 1280, h: 720 },
+    '4:5': { w: 1080, h: 1350 },
+    '9:16': { w: 720, h: 1280 }
+  };
+
+  const { w, h } = dimensions[format];
+  const orientation = format === '16:9' ? 'landscape' : 'portrait';
+
+  // Initialize jsPDF
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: orientation as any,
     unit: 'px',
-    format: [1280, 720] // Match our slide aspect ratio
+    format: [w, h]
   });
-
-  // Create a hidden container to render slides
-  const container = document.createElement('div');
-  container.style.position = 'absolute';
-  container.style.top = '-9999px';
-  container.style.left = '-9999px';
-  document.body.appendChild(container);
 
   try {
     for (let i = 0; i < slides.length; i++) {
+      if (i > 0) doc.addPage([w, h], orientation as any);
+
       const slide = slides[i];
-      
-      // Create DOM element for the slide
-      const slideEl = document.createElement('div');
-      slideEl.style.width = '1280px';
-      slideEl.style.height = '720px';
-      slideEl.style.backgroundColor = slide.backgroundColor;
-      slideEl.style.color = slide.textColor;
-      slideEl.style.display = 'flex';
-      slideEl.style.flexDirection = 'column';
-      slideEl.style.alignItems = 'center';
-      slideEl.style.justifyContent = 'center';
-      slideEl.style.padding = '64px';
-      slideEl.style.fontFamily = 'sans-serif'; // Use system font for reliable rendering
 
-      const title = document.createElement('h1');
-      title.innerText = slide.title;
-      title.style.fontSize = '64px';
-      title.style.fontWeight = 'bold';
-      title.style.marginBottom = '48px';
-      title.style.textAlign = 'center';
-      slideEl.appendChild(title);
+      // Background
+      doc.setFillColor(slide.backgroundColor || '#ffffff');
+      doc.rect(0, 0, w, h, 'F');
 
-      const ul = document.createElement('ul');
-      ul.style.textAlign = 'left';
-      
-      slide.bullets.forEach(bullet => {
-        const li = document.createElement('li');
-        li.innerText = bullet;
-        li.style.fontSize = '32px';
-        li.style.marginBottom = '16px';
-        li.style.listStyleType = 'disc';
-        ul.appendChild(li);
+      // Text Color
+      doc.setTextColor(slide.textColor || '#000000');
+
+      // Title
+      doc.setFontSize(format === '9:16' ? 48 : 64);
+      doc.setFont('helvetica', 'bold');
+
+      const titleLines = doc.splitTextToSize(slide.title, w - 100);
+      const titleY = format === '16:9' ? h * 0.2 : h * 0.15;
+      doc.text(titleLines, w / 2, titleY, { align: 'center' });
+
+      // Content
+      doc.setFontSize(format === '9:16' ? 24 : 32);
+      doc.setFont('helvetica', 'normal');
+
+      let contentY = titleY + (titleLines.length * (format === '9:16' ? 60 : 80));
+
+      slide.bullets.forEach((bullet) => {
+        const bulletLines = doc.splitTextToSize(`• ${bullet}`, w - 120);
+        doc.text(bulletLines, 60, contentY);
+        contentY += bulletLines.length * (format === '9:16' ? 30 : 40) + 20;
       });
-      slideEl.appendChild(ul);
 
-      container.appendChild(slideEl);
+      // Footer (Slide Number)
+      doc.setFontSize(14);
+      doc.text(`${i + 1} / ${slides.length}`, w - 40, h - 30, { align: 'right' });
 
-      // Capture
-      const canvas = await html2canvas(slideEl, { scale: 1 });
-      const imgData = canvas.toDataURL('image/png');
+      // Branding/Footer for 4:5
+      if (format === '4:5') {
+        doc.setFontSize(12);
+        doc.setTextColor('#888888');
+        doc.text('Swipe for more ->', w / 2, h - 30, { align: 'center' });
+      }
 
-      if (i > 0) doc.addPage([1280, 720], 'landscape');
-      doc.addImage(imgData, 'PNG', 0, 0, 1280, 720);
-      
-      container.removeChild(slideEl);
+      // Brand Mark
+      if (brand?.name) {
+        doc.setFontSize(12);
+        doc.setTextColor(brand.primaryColor || '#888888');
+        doc.text(brand.name, 40, h - 30, { align: 'left' });
+      }
     }
 
-    doc.save(`${topic.replace(/\s+/g, '_')}_presentation.pdf`);
+    doc.save(`${topic.replace(/\s+/g, '_')}_${format.replace(':', '-')}.pdf`);
   } catch (error) {
     console.error('PDF Export Failed:', error);
     throw error;
-  } finally {
-    document.body.removeChild(container);
   }
 };

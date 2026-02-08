@@ -1,24 +1,29 @@
 import React from 'react';
-import { EnhancedSlide } from '@/lib/slidesStore';
+import { EnhancedSlide, BrandKit } from '@/lib/slidesStore';
 
 interface SlideContentProps {
     slide: EnhancedSlide;
+    brand?: BrandKit | null;
     frame?: number; // For animations in Remotion
     isStatic?: boolean; // For static rendering (no animations)
 }
 
 // Shared slide content rendering - used by both SlideRenderer and SlideComposition
-export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, isStatic = false }) => {
+export const SlideContent: React.FC<SlideContentProps> = ({ slide, brand, frame = 100, isStatic = false }) => {
     // Animation helpers
     const getOpacity = (delay: number = 0) => isStatic ? 1 : Math.min(1, (frame - delay) / 15);
     const getTranslateY = (delay: number = 0) => isStatic ? 0 : Math.max(0, 20 - (frame - delay));
     const getScale = (base: number = 1, amount: number = 0.05) => isStatic ? 1 : base + (amount * Math.min(1, frame / 20));
 
+    // Brand Overrides
+    const primaryColor = brand?.primaryColor || slide.accentColor || '#ec4899';
+    const secondaryColor = brand?.secondaryColor || adjustColor(primaryColor, -30);
+    const fontFamily = brand?.fontFamily || "'Segoe UI', system-ui, -apple-system, sans-serif";
+
     const bgStyle = slide.gradient ||
         `linear-gradient(135deg, ${slide.backgroundColor || '#0a0a0f'} 0%, ${adjustColor(slide.backgroundColor || '#0a0a0f', -30)} 100%)`;
 
     const textColor = slide.textColor || '#ffffff';
-    const accentColor = slide.accentColor || '#ec4899';
 
     return (
         <div style={{
@@ -28,7 +33,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
             overflow: 'hidden',
             background: bgStyle,
             color: textColor,
-            fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+            fontFamily: fontFamily,
         }}>
             {/* Background decorative elements */}
             <div style={{
@@ -38,7 +43,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                 width: '400px',
                 height: '400px',
                 borderRadius: '50%',
-                background: `radial-gradient(circle, ${accentColor}25 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${primaryColor}25 0%, transparent 70%)`,
                 filter: 'blur(40px)',
             }} />
             <div style={{
@@ -48,7 +53,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                 width: '350px',
                 height: '350px',
                 borderRadius: '50%',
-                background: `radial-gradient(circle, ${adjustColor(accentColor, -30)}15 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${secondaryColor}15 0%, transparent 70%)`,
                 filter: 'blur(40px)',
             }} />
 
@@ -59,6 +64,23 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                 backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
                 backgroundSize: '50px 50px',
             }} />
+
+            {/* Brand Logo */}
+            {brand?.logoUrl && (
+                <div style={{
+                    position: 'absolute',
+                    top: '32px',
+                    right: '32px',
+                    zIndex: 20,
+                    width: '48px',
+                    height: '48px',
+                    backgroundImage: `url(${brand.logoUrl})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    opacity: 0.8
+                }} />
+            )}
 
             {/* Content based on layout type */}
             <div style={{
@@ -74,7 +96,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                         slide={slide}
                         getOpacity={getOpacity}
                         getTranslateY={getTranslateY}
-                        accentColor={accentColor}
+                        accentColor={primaryColor}
                         textColor={textColor}
                     />
                 ) : slide.layoutType === 'statistics' ? (
@@ -82,7 +104,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                         slide={slide}
                         getOpacity={getOpacity}
                         getTranslateY={getTranslateY}
-                        accentColor={accentColor}
+                        accentColor={primaryColor}
                         textColor={textColor}
                     />
                 ) : slide.layoutType === 'conclusion' ? (
@@ -96,7 +118,7 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, frame = 100, 
                         slide={slide}
                         getOpacity={getOpacity}
                         getTranslateY={getTranslateY}
-                        accentColor={accentColor}
+                        accentColor={primaryColor}
                     />
                 )}
             </div>

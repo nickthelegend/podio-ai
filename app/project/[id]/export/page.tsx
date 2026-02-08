@@ -29,7 +29,7 @@ export default function ProjectExportPage() {
     const params = useParams()
     const projectId = params.id as string
 
-    const { slides, topic, style, hasVideo, loadProject, getProject } = useSlidesStore()
+    const { slides, topic, style, format, brand, hasVideo, loadProject, getProject } = useSlidesStore()
     const [copied, setCopied] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [project, setProject] = useState<Project | null>(null)
@@ -56,6 +56,8 @@ export default function ProjectExportPage() {
                         id: data.id,
                         topic: data.title,
                         style: data.content?.style || 'Modern',
+                        format: data.content?.format || '16:9',
+                        brand: data.content?.brand,
                         slides: data.content?.slides || [],
                         createdAt: data.created_at,
                         updatedAt: data.created_at,
@@ -104,7 +106,7 @@ export default function ProjectExportPage() {
         if (!slides.length) return
         setIsExportingPDF(true)
         try {
-            await exportSlidesToPDF(slides, topic || 'Presentation')
+            await exportSlidesToPDF(slides, topic || 'Presentation', format, brand)
             toast.success("PDF Downloaded!")
         } catch (e) {
             toast.error("Failed to export PDF")
@@ -115,6 +117,14 @@ export default function ProjectExportPage() {
 
     const totalDuration = slides.reduce((acc, s) => acc + (s.duration || 5), 0)
     const totalFrames = slides.reduce((acc, s) => acc + (s.duration ? Math.ceil(s.duration * 30) : 150), 0)
+
+    // Determine dimensions
+    const dimensions = {
+        '16:9': { w: 1280, h: 720, aspect: '16/9' },
+        '4:5': { w: 1080, h: 1350, aspect: '4/5' },
+        '9:16': { w: 720, h: 1280, aspect: '9/16' }
+    };
+    const { w, h, aspect } = dimensions[format || '16:9'];
 
     if (isLoading) {
         return (
@@ -179,23 +189,28 @@ export default function ProjectExportPage() {
                                 <span className="text-[10px] font-bold uppercase tracking-widest">Video Preview</span>
                             </div>
                             <h1 className="text-3xl font-bold text-white">{topic}</h1>
+                            {format !== '16:9' && (
+                                <span className="text-xs text-gray-500 bg-white/10 px-2 py-1 rounded ml-2">
+                                    {format} Format
+                                </span>
+                            )}
                         </div>
 
                         {/* Video Player */}
-                        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
-                            {hasVideo && slides.some(s => s.audioUrl) ? (
+                        <div className={`rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black mx-auto`} style={{ maxWidth: format === '16:9' ? '100%' : '400px' }}>
+                            {hasVideo ? (
                                 <Player
                                     component={SlideComposition}
-                                    inputProps={{ slides }}
+                                    inputProps={{ slides, brand: brand || undefined }} // Pass brand to composition if needed (not yet implicitly supported in composition but good for future)
                                     durationInFrames={totalFrames}
                                     fps={30}
-                                    compositionWidth={1280}
-                                    compositionHeight={720}
-                                    style={{ width: '100%', height: 'auto', aspectRatio: '16/9' }}
+                                    compositionWidth={w}
+                                    compositionHeight={h}
+                                    style={{ width: '100%', height: 'auto', aspectRatio: aspect }}
                                     controls
                                 />
                             ) : (
-                                <div className="aspect-video flex items-center justify-center bg-neutral-900">
+                                <div className="flex items-center justify-center bg-neutral-900" style={{ aspectRatio: aspect }}>
                                     <div className="text-center">
                                         <Presentation className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                                         <p className="text-gray-500">Video not generated yet</p>
@@ -299,8 +314,8 @@ export default function ProjectExportPage() {
 
                                 <button
                                     className={`w-full flex items-center justify-between p-4 rounded-xl border transition-colors group ${hasVideo
-                                            ? 'bg-white/5 hover:bg-white/10 border-white/5'
-                                            : 'bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed'
+                                        ? 'bg-white/5 hover:bg-white/10 border-white/5'
+                                        : 'bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed'
                                         }`}
                                     disabled={!hasVideo}
                                 >

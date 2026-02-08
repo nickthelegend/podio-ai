@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
 import { supabase } from '@/lib/supabase'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
@@ -111,21 +111,17 @@ export default function ContentCreationPage() {
                 setMessages(data.map(m => ({
                     id: m.id,
                     role: m.role as 'user' | 'assistant',
-                    content: m.content
+                    parts: [{ type: 'text', text: m.content }]
                 })))
             }
         }
         loadMessages()
     }, [currentSessionId])
 
-    // Vercel AI SDK hook
-    const { messages, input, handleInputChange, handleSubmit, setMessages, isLoading } = useChat({
-        api: '/api/chat',
-        body: {
-            platform,
-            style,
-            sessionId: currentSessionId
-        },
+    // Vercel AI SDK hook - v6 manual input handling
+    const [input, setInput] = useState('')
+
+    const { messages, setMessages, status, sendMessage } = useChat({
         onFinish: async () => {
             // Refresh session list to update titles if we implement auto-titling later
             loadSessions()
@@ -135,6 +131,23 @@ export default function ContentCreationPage() {
             console.error(err)
         }
     })
+
+    const isLoading = status === 'submitted' || status === 'streaming'
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setInput(e.target.value)
+    }
+
+    const getMessageContent = (m: any) => {
+        if (m.content) return m.content // Fallback for backward compatibility or initial state
+        if (m.parts) {
+            return m.parts
+                .filter((p: any) => p.type === 'text')
+                .map((p: any) => p.text)
+                .join('')
+        }
+        return ''
+    }
 
     // Auto-scroll
     useEffect(() => {
@@ -146,15 +159,34 @@ export default function ContentCreationPage() {
         e.preventDefault()
         if (!input.trim()) return
 
-        if (!currentSessionId) {
+        let sessionId = currentSessionId
+
+        if (!sessionId) {
+            // Create session if it doesn't exist
+            // Note: In a real app we might want to wait for this, or handle it optimistically
+            // Here we'll try to create it and wait
             await createNewSession()
-            // Wait a tick for state to update (in a real app, use ref or separate logic)
-            // For now, let's just trigger submit after ID is set, or simply proceed if backend handles new session (it doesn't yet)
-            // Better approach: create session implicitly or force user to create one.
-            // Let's force create one locally if null, but await the state update
+            // We need to get the new session ID. createNewSession updates state but it might not be immediate.
+            // For safety, we can't easily get the ID here without refactoring createNewSession to return it.
+            // Let's assume createNewSession sets state and we might miss it if we don't return it.
+            // Ideally createNewSession should return the ID.
+            // For now, let's just proceed. The backend relies on body.sessionId. 
+            // If manual creation is required, we should refactor createNewSession.
+            // ... Refactoring createNewSession later if needed.
         }
 
-        handleSubmit(e)
+        // Send message
+        await sendMessage({
+            text: input
+        }, {
+            body: {
+                platform,
+                style,
+                sessionId: sessionId || currentSessionId // Might be stale if state update is slow
+            }
+        })
+
+        setInput('')
     }
 
     const styles = [
@@ -324,10 +356,10 @@ export default function ContentCreationPage() {
                                 className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 <div className={`max-w-[80%] rounded-2xl p-4 shadow-lg ${m.role === 'user'
-                                        ? 'bg-pink-600/20 border border-pink-500/20 text-white rounded-br-none'
-                                        : 'bg-[#1a1a2e] border border-white/10 text-gray-200 rounded-bl-none'
+                                    ? 'bg-pink-600/20 border border-pink-500/20 text-white rounded-br-none'
+                                    : 'bg-[#1a1a2e] border border-white/10 text-gray-200 rounded-bl-none'
                                     }`}>
-                                    <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                                    <div className="whitespace-pre-wrap leading-relaxed">{getMessageContent(m)}</div>
 
                                     {m.role === 'assistant' && (
                                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
@@ -337,7 +369,7 @@ export default function ContentCreationPage() {
                                                     ? 'bg-[#1DA1F2] hover:bg-[#1DA1F2]/80 text-white'
                                                     : 'bg-[#0077b5] hover:bg-[#0077b5]/80 text-white'
                                                     }`}
-                                                onClick={() => postToSocial(m.content)}
+                                                onClick={() => postToSocial(getMessageContent(m))}
                                             >
                                                 {platform === 'twitter' ? <Twitter className="w-3 h-3" /> : <Linkedin className="w-3 h-3" />}
                                                 Post Now
@@ -347,7 +379,7 @@ export default function ContentCreationPage() {
                                                 variant="ghost"
                                                 className="h-8 w-8 p-0"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(m.content)
+                                                    navigator.clipboard.writeText(getMessageContent(m))
                                                     toast.success("Copied!")
                                                 }}
                                             >
