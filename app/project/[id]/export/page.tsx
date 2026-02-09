@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner'
 import { useRouter, useParams } from 'next/navigation'
 import { exportSlidesToPDF } from '@/lib/pdf'
+import { VideoProcessingModal } from '@/components/VideoProcessingModal'
 
 export default function ProjectExportPage() {
     const router = useRouter()
@@ -34,6 +35,9 @@ export default function ProjectExportPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [project, setProject] = useState<Project | null>(null)
     const [isExportingPDF, setIsExportingPDF] = useState(false)
+    const [showVideoModal, setShowVideoModal] = useState(false)
+    const [videoStatus, setVideoStatus] = useState<'processing' | 'complete' | 'error'>('processing')
+    const [videoProgress, setVideoProgress] = useState(0)
 
     useEffect(() => {
         const loadProjectData = async () => {
@@ -106,13 +110,35 @@ export default function ProjectExportPage() {
         if (!slides.length) return
         setIsExportingPDF(true)
         try {
-            await exportSlidesToPDF(slides, topic || 'Presentation', format, brand)
+            await exportSlidesToPDF(slides as any, topic || 'Presentation', format, brand)
             toast.success("PDF Downloaded!")
         } catch (e) {
             toast.error("Failed to export PDF")
         } finally {
             setIsExportingPDF(false)
         }
+    }
+
+    const handleExportVideo = () => {
+        if (!hasVideo) {
+            toast.error("Please generate video from the editor first")
+            return
+        }
+        setShowVideoModal(true)
+        setVideoStatus('processing')
+        setVideoProgress(0)
+
+        // Simulated rendering progress
+        let progress = 0
+        const interval = setInterval(() => {
+            progress += Math.random() * 15
+            if (progress >= 100) {
+                progress = 100
+                setVideoStatus('complete')
+                clearInterval(interval)
+            }
+            setVideoProgress(progress)
+        }, 800)
     }
 
     const totalDuration = slides.reduce((acc, s) => acc + (s.duration || 5), 0)
@@ -159,6 +185,17 @@ export default function ProjectExportPage() {
     return (
         <div className="min-h-screen bg-[#030014] text-white">
             <Header />
+
+            {/* Video Processing Modal */}
+            <VideoProcessingModal
+                isOpen={showVideoModal}
+                onClose={() => setShowVideoModal(false)}
+                status={videoStatus}
+                progress={videoProgress}
+                currentSlide={Math.floor((videoProgress / 100) * slides.length)}
+                totalSlides={slides.length}
+                onViewVideo={() => setShowVideoModal(false)}
+            />
 
             {/* Ambient Background */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -313,6 +350,7 @@ export default function ProjectExportPage() {
                                 </button>
 
                                 <button
+                                    onClick={handleExportVideo}
                                     className={`w-full flex items-center justify-between p-4 rounded-xl border transition-colors group ${hasVideo
                                         ? 'bg-white/5 hover:bg-white/10 border-white/5'
                                         : 'bg-white/[0.02] border-white/5 opacity-50 cursor-not-allowed'
