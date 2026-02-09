@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Podio AI 🎙️💻
 
-## Getting Started
+Podio AI is an all-in-one AI Content Studio designed to transform ideas into stunning presentations and engaging podcasts in minutes. Built for creators, marketers, and professionals who need high-quality content without the manual grind.
 
-First, run the development server:
+## ✨ Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 🎨 AI Slide Studio
+- **Instant Generation**: Create a full slide deck from a simple prompt.
+- **Smart Editor**: Edit slides using natural language. Ask to "make it more detailed", "use a funny tone", or "add statistics".
+- **Premium Layouts**: Support for Title, Content, Statistics, Quotes, and Conclusion slides.
+- **Multi-Format Support**: Switch between **16:9 (Presentation)**, **9:16 (Viral Shorts)**, and **4:5 (LinkedIn Carousel)**.
+- **Brand Kits**: Apply your brand's colors and theme instantly across all content.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 🎙️ Podcast Engine
+- **AI Scripting**: Generate professional conversational scripts between hosts and guests.
+- **Voiceover (TTS)**: Integrated high-quality Text-to-Speech for every slide.
+- **Real-time Sync**: Audio is perfectly synced with slide transitions and animations.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📤 Premium Export Suite
+- **PDF Export**: Generate high-fidelity PDFs that preserve your brand's gradients and layouts.
+- **Video Export (MP4/WebM)**: A unique **Serverless-compatible** video rendering engine that captures frames directly in your browser. No expensive backend FFmpeg required.
+- **Presentation Bundle**: Download your voiceovers and slides together for easy sharing.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Tech Stack
 
-## Learn More
+- **Framework**: Next.js 15+ with Turbopack
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4 (Modern oklab/oklch color spaces)
+- **AI Engine**: Google Gemini 2.0 Flash
+- **Video Engine**: Remotion (Composition & Playback)
+- **State Management**: Zustand
+- **Database & Auth**: Supabase
+- **PDF Generation**: jsPDF
+- **Browser Capturing**: html2canvas + MediaRecorder API
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠️ Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Prerequisites
+- Node.js 18+
+- Supabase Account
+- Google Gemini API Key
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Installation
 
-## Deploy on Vercel
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/nickthelegend/podio-ai.git
+   cd podio-ai
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Environment Setup**
+   Create a `.env.local` file with the following:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+   GOOGLE_GEMINI_API_KEY=your_gemini_key
+   ```
+
+4. **Run Development Server**
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3002](http://localhost:3002) to start creating.
+
+## 📱 roadmap & Phase 2
+- [x] Viral Shorts Mode (9:16)
+- [x] LinkedIn Carousel Support
+- [x] Brand Kit Integration
+- [x] Browser-side Video Export
+- [ ] AI Image Generation for Slides (DALL-E 3 / Imagen)
+- [ ] Direct LinkedIn/Instagram Publishing
+- [ ] Interactive Polls for Presentations
+
+## 📄 License
+MIT License - Created by [Nick](https://github.com/nickthelegend)
