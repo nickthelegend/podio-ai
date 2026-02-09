@@ -167,8 +167,35 @@ export default function CreateSlidesPage() {
       })
       const data = await res.json()
       if (data.slide) {
+        let updatedSlide = data.slide
+
+        // If video already exists, we must sync the audio with the new speaker notes
+        if (hasVideo) {
+          try {
+            const ttsRes = await fetch('/api/podcast/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                script: [{ speaker: 'Presenter', line: updatedSlide.speakerNotes }],
+                language: 'en-US'
+              })
+            })
+            const ttsData = await ttsRes.json()
+            if (ttsData.audio) {
+              updatedSlide.audioUrl = `data:audio/mp3;base64,${ttsData.audio}`
+              const wordCount = updatedSlide.speakerNotes.split(/\s+/).length
+              const baseDuration = wordCount / 2.2
+              const pauseBuffer = 1.5
+              updatedSlide.duration = Math.max(5, baseDuration + pauseBuffer)
+            }
+          } catch (e) {
+            console.error("Failed to update slide audio", e)
+            toast.error("Content updated, but audio sync failed")
+          }
+        }
+
         const newSlides = [...slides]
-        newSlides[selectedSlideIndex] = data.slide
+        newSlides[selectedSlideIndex] = updatedSlide
         setSlides(newSlides)
         toast.success("Slide updated!")
 
