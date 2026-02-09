@@ -4,9 +4,8 @@ import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { useSlidesStore, EnhancedSlide, Project } from '@/lib/slidesStore'
 import { getProjectById } from '@/lib/projects'
-import { Player } from '@remotion/player'
 import { SlideComposition } from '@/components/remotion/SlideComposition'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
     Play,
@@ -18,12 +17,15 @@ import {
     Presentation,
     Clock,
     Layers,
-    ExternalLink
+    ExternalLink,
+    FileVideo
 } from 'lucide-react'
+import { Player, PlayerRef } from '@remotion/player'
 import { toast } from 'sonner'
 import { useRouter, useParams } from 'next/navigation'
 import { exportSlidesToPDF } from '@/lib/pdf'
 import { VideoProcessingModal } from '@/components/VideoProcessingModal'
+import html2canvas from 'html2canvas'
 
 export default function ProjectExportPage() {
     const router = useRouter()
@@ -38,6 +40,9 @@ export default function ProjectExportPage() {
     const [showVideoModal, setShowVideoModal] = useState(false)
     const [videoStatus, setVideoStatus] = useState<'processing' | 'complete' | 'error'>('processing')
     const [videoProgress, setVideoProgress] = useState(0)
+    const [isRecording, setIsRecording] = useState(false)
+    const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
+    const playerRef = useRef<PlayerRef>(null)
 
     useEffect(() => {
         const loadProjectData = async () => {
@@ -119,26 +124,129 @@ export default function ProjectExportPage() {
         }
     }
 
-    const handleExportVideo = () => {
-        if (!hasVideo) {
+    const downloadVoiceover = () => {
+        // Collect all audio and provide as a bundle or individual
+        slides.forEach((slide, i) => {
+            if (slide.audioUrl) {
+                const link = document.createElement('a');
+                link.href = slide.audioUrl;
+                link.download = `slide_${i + 1}_voiceover.mp3`;
+                link.click();
+            }
+        });
+        toast.success("Voiceover files downloading...");
+    }
+
+    const handleExportVideo = async () => {
+        if (!hasVideo || !playerRef.current) {
             toast.error("Please generate video from the editor first")
             return
         }
+
         setShowVideoModal(true)
         setVideoStatus('processing')
         setVideoProgress(0)
 
-        // Simulated rendering progress
-        let progress = 0
-        const interval = setInterval(() => {
-            progress += Math.random() * 15
-            if (progress >= 100) {
-                progress = 100
-                setVideoStatus('complete')
-                clearInterval(interval)
+        try {
+            const player = playerRef.current;
+            const container = document.querySelector('.remotion-player-container');
+            if (!container) throw new Error("Could not find player container");
+
+            // 1. Create a workspace canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error("Could not initialize canvas context");
+
+            const stream = canvas.captureStream(30);
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9',
+                bitsPerSecond: 5000000 // 5Mbps for high quality
+            });
+
+            const chunks: Blob[] = [];
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+            const p = new Promise<void>((resolve) => {
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    setRecordedUrl(url);
+                    setVideoStatus('complete');
+                    resolve();
+                };
+            });
+
+            mediaRecorder.start();
+
+            // 2. Render Loop (Frame by Frame)
+            // We use a small batch size to keep the UI responsive
+            const totalFramesCount = totalFrames;
+            for (let f = 0; f < totalFramesCount; f += 1) {
+                // Seek to frame
+                player.seekTo(f);
+
+                // Wait for layout/paint
+                await new Promise(r => setTimeout(r, 60));
+
+                // Capture current view
+                const frameCanvas = await html2canvas(container as HTMLElement, {
+                    width: w,
+                    height: h,
+                    scale: 1,
+                    useCORS: true,
+                    backgroundColor: null,
+                    onclone: (clonedDoc) => {
+                        // Fix for Tailwind CSS v4 oklab/oklch colors which crash html2canvas
+                        const elements = clonedDoc.getElementsByTagName("*");
+                        for (let i = 0; i < elements.length; i++) {
+                            const el = elements[i] as HTMLElement;
+                            if (el.style) {
+                                // Search for modern color functions in any style property
+                                const style = clonedDoc.defaultView?.getComputedStyle(el);
+                                if (style) {
+                                    // We check common properties that might have oklab
+                                    ['color', 'backgroundColor', 'borderColor', 'backgroundImage'].forEach(prop => {
+                                        const val = (el.style as any)[prop] || style.getPropertyValue(prop);
+                                        if (val && (val.includes('oklab') || val.includes('oklch'))) {
+                                            // Fallback to transparent or black/white depending on property
+                                            (el.style as any)[prop] = prop === 'color' ? '#ffffff' : 'transparent';
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Draw to our recording canvas
+                ctx.clearRect(0, 0, w, h);
+                ctx.drawImage(frameCanvas, 0, 0, w, h);
+
+                setVideoProgress((f / totalFramesCount) * 100);
             }
-            setVideoProgress(progress)
-        }, 800)
+
+            mediaRecorder.stop();
+            await p;
+            toast.success("Video Captured Successfully!");
+
+        } catch (e) {
+            console.error("Recording failed", e);
+            setVideoStatus('error');
+            toast.error("Video capture failed. Is your browser blocking canvas access?");
+        }
+    }
+
+    const downloadRecordedVideo = () => {
+        if (recordedUrl) {
+            const link = document.createElement('a');
+            link.href = recordedUrl;
+            link.download = `${topic.replace(/\s+/g, '_')}.webm`;
+            link.click();
+            setShowVideoModal(false);
+            toast.success("Download started!");
+        }
     }
 
     const totalDuration = slides.reduce((acc, s) => acc + (s.duration || 5), 0)
@@ -194,7 +302,7 @@ export default function ProjectExportPage() {
                 progress={videoProgress}
                 currentSlide={Math.floor((videoProgress / 100) * slides.length)}
                 totalSlides={slides.length}
-                onViewVideo={() => setShowVideoModal(false)}
+                onViewVideo={downloadRecordedVideo}
             />
 
             {/* Ambient Background */}
@@ -233,12 +341,13 @@ export default function ProjectExportPage() {
                             )}
                         </div>
 
-                        {/* Video Player */}
-                        <div className={`rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black mx-auto`} style={{ maxWidth: format === '16:9' ? '100%' : '400px' }}>
+                        {/* Video Player Container */}
+                        <div className={`remotion-player-container rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black mx-auto`} style={{ maxWidth: format === '16:9' ? '100%' : '400px' }}>
                             {hasVideo ? (
                                 <Player
+                                    ref={playerRef}
                                     component={SlideComposition}
-                                    inputProps={{ slides, brand: brand || undefined }} // Pass brand to composition if needed (not yet implicitly supported in composition but good for future)
+                                    inputProps={{ slides, brand: brand || undefined }}
                                     durationInFrames={totalFrames}
                                     fps={30}
                                     compositionWidth={w}

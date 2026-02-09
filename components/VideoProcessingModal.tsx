@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Video, Loader2, CheckCircle, XCircle, Sparkles } from 'lucide-react'
+import { Video, Loader2, CheckCircle, XCircle, Sparkles, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface VideoProcessingModalProps {
@@ -116,10 +116,10 @@ export function VideoProcessingModal({
                                         </div>
 
                                         <h2 className="text-2xl font-bold text-white mb-2">
-                                            Video Ready! 🎉
+                                            Presentation Ready! 🎉
                                         </h2>
                                         <p className="text-gray-400 mb-6">
-                                            Your presentation video has been generated successfully.
+                                            The High-Quality presentation pack is ready for download.
                                         </p>
 
                                         <div className="flex gap-3 justify-center">
@@ -128,14 +128,14 @@ export function VideoProcessingModal({
                                                 variant="outline"
                                                 className="border-white/10 hover:bg-white/5 text-gray-300"
                                             >
-                                                Close
+                                                Cancel
                                             </Button>
                                             <Button
                                                 onClick={onViewVideo}
                                                 className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500"
                                             >
-                                                <Sparkles className="w-4 h-4 mr-2" />
-                                                View & Export
+                                                <Download className="w-4 h-4 mr-2" />
+                                                Download Now
                                             </Button>
                                         </div>
                                     </div>
