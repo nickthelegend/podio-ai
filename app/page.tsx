@@ -1,6 +1,6 @@
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Mic, Presentation } from 'lucide-react'
+import { ArrowRight, Mic, Presentation, Puzzle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Home() {
@@ -42,25 +42,35 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-purple-500/50 transition-all duration-500">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <Mic className="w-12 h-12 text-purple-400 mb-6" />
               <h3 className="text-2xl font-bold mb-2">AI Podcast Generator</h3>
-              <p className="text-gray-400 mb-6">Convert text, articles, or notes into engaging audio conversations with lifelike voices.</p>
-              <div className="flex items-center text-sm font-medium text-purple-400">
+              <p className="text-gray-400 mb-6 text-sm">Convert text, articles, or notes into engaging audio conversations with lifelike voices.</p>
+              <Link href="/create/podcast" className="flex items-center text-sm font-medium text-purple-400">
                 Create Podcast <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
+              </Link>
             </div>
 
             <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-pink-500/50 transition-all duration-500">
               <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <Presentation className="w-12 h-12 text-pink-400 mb-6" />
               <h3 className="text-2xl font-bold mb-2">Smart Slides</h3>
-              <p className="text-gray-400 mb-6">Generate beautiful, formatted presentation decks from a simple topic or outline.</p>
-              <div className="flex items-center text-sm font-medium text-pink-400">
+              <p className="text-gray-400 mb-6 text-sm">Generate beautiful, formatted presentation decks from a simple topic or outline.</p>
+              <Link href="/create/slides" className="flex items-center text-sm font-medium text-pink-400">
                 Generate Slides <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </div>
+              </Link>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-blue-500/50 transition-all duration-500">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Puzzle className="w-12 h-12 text-blue-400 mb-6" />
+              <h3 className="text-2xl font-bold mb-2">Chrome Extension</h3>
+              <p className="text-gray-400 mb-6 text-sm">Summarize any webpage into a podcast instantly using our browser sidepanel.</p>
+              <Link href="/download" className="flex items-center text-sm font-medium text-blue-400">
+                Install Now <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
         </div>
