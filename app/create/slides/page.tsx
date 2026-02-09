@@ -57,6 +57,7 @@ export default function CreateSlidesPage() {
   } = useSlidesStore()
 
   const [isSaving, setIsSaving] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false)
@@ -144,6 +145,40 @@ export default function CreateSlidesPage() {
       toast.error("Failed to generate slides")
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const updateSingleSlide = async (instruction: string) => {
+    if (slides.length === 0) return
+    setIsUpdating(true)
+
+    const currentSlide = slides[selectedSlideIndex]
+
+    try {
+      const res = await fetch('/api/slides/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic,
+          instruction,
+          currentSlide,
+          style
+        })
+      })
+      const data = await res.json()
+      if (data.slide) {
+        const newSlides = [...slides]
+        newSlides[selectedSlideIndex] = data.slide
+        setSlides(newSlides)
+        toast.success("Slide updated!")
+
+        // Auto-save after update
+        autoSaveProject(newSlides, hasVideo)
+      }
+    } catch (e) {
+      toast.error("Failed to update slide")
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -707,10 +742,12 @@ export default function CreateSlidesPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#030014] via-[#030014] to-transparent pt-8 pb-6 px-6 z-30">
         <div className="container mx-auto max-w-4xl">
           <AIChatInput
-            onSubmit={generateSlides}
-            isLoading={isGenerating}
+            onSubmit={updateSingleSlide}
+            isLoading={isUpdating}
             isCompact
-            placeholder="Describe your presentation topic..."
+            placeholder={`Update slide ${selectedSlideIndex + 1} with a prompt...`}
+            label={`Editing Slide ${selectedSlideIndex + 1}`}
+            loadingText="Updating Slide..."
           />
         </div>
       </div>
