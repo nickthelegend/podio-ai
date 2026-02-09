@@ -165,11 +165,17 @@ export default function CreateSlidesPage() {
           style
         })
       })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || "Failed to update slide")
+      }
+
       const data = await res.json()
       if (data.slide) {
         let updatedSlide = data.slide
 
-        // If video already exists, we must sync the audio with the new speaker notes
+        // If video already exists, we MUST sync the audio with the new speaker notes
         if (hasVideo) {
           try {
             const ttsRes = await fetch('/api/podcast/tts', {
@@ -190,7 +196,7 @@ export default function CreateSlidesPage() {
             }
           } catch (e) {
             console.error("Failed to update slide audio", e)
-            toast.error("Content updated, but audio sync failed")
+            toast.error("Content updated, but audio sync failed. Video might be out of sync.")
           }
         }
 
@@ -201,9 +207,11 @@ export default function CreateSlidesPage() {
 
         // Auto-save after update
         autoSaveProject(newSlides, hasVideo)
+      } else {
+        throw new Error("No slide data received")
       }
-    } catch (e) {
-      toast.error("Failed to update slide")
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update slide")
     } finally {
       setIsUpdating(false)
     }
