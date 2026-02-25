@@ -1,6 +1,5 @@
 import { google } from '@ai-sdk/google';
 import { streamText } from 'ai';
-import { supabase } from '@/lib/supabase';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -11,20 +10,7 @@ export async function POST(req: Request) {
     // Get the latest user message to store
     const lastUserMessage = messages[messages.length - 1];
 
-    // Verify user authentication
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return new Response('Unauthorized', { status: 401 });
-    }
-
-    // Store user message if sessionId provided
-    if (sessionId && lastUserMessage.role === 'user') {
-        await supabase.from('chat_messages').insert({
-            session_id: sessionId,
-            role: 'user',
-            content: lastUserMessage.content,
-        });
-    }
+    // No auth or persistence (supabase disabled)
 
     // Define system instructions based on platform and style
     let systemPrompt = `You are a social media expert creating high-impact content for ${platform}.
@@ -50,13 +36,7 @@ export async function POST(req: Request) {
         system: systemPrompt,
         onFinish: async ({ text }) => {
             // Store assistant response
-            if (sessionId) {
-                await supabase.from('chat_messages').insert({
-                    session_id: sessionId,
-                    role: 'assistant',
-                    content: text,
-                });
-            }
+            // No persistence
         },
     });
 

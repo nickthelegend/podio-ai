@@ -3,8 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getProjects, Project } from '@/lib/projects'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Mic, Presentation, Clock, Plus, Loader2 } from 'lucide-react'
@@ -13,7 +11,6 @@ import Link from 'next/link'
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -27,16 +24,8 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-      } else {
-        fetchProjects()
-      }
-    }
-    checkUser()
-  }, [router, fetchProjects])
+    fetchProjects()
+  }, [fetchProjects])
 
   return (
     <div className="min-h-screen bg-[#030014] text-white">

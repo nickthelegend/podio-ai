@@ -1,5 +1,3 @@
-import { supabase } from '@/lib/supabase'
-
 export interface Project {
   id: string
   title: string
@@ -9,6 +7,23 @@ export interface Project {
   created_at: string
 }
 
+const STORAGE_KEY = 'podio-projects'
+
+const getLocalProjects = (): Project[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as Project[]) : []
+  } catch {
+    return []
+  }
+}
+
+const setLocalProjects = (projects: Project[]) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+}
+
 export const saveProject = async (
   title: string,
   type: 'podcast' | 'slides',
@@ -16,95 +31,43 @@ export const saveProject = async (
   audioUrl?: string | null,
   projectId?: string
 ) => {
-  const { data: { user } } = await supabase.auth.getUser()
+  const fallbackId = projectId || (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `local-${Date.now()}`)
 
-  if (!user) throw new Error("User not authenticated")
+  const projects = getLocalProjects()
+  const existingIndex = projects.findIndex(p => p.id === fallbackId)
 
-  // Check if project already exists (for updates)
-  if (projectId) {
-    const { data: existing } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .single()
-
-    if (existing) {
-      // Update existing project
-      const { data, error } = await supabase
-        .from('projects')
-        .update({
-          title: title || 'Untitled Project',
-          content,
-          audio_url: audioUrl,
-        })
-        .eq('id', projectId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    }
-  }
-
-  // Create new project with custom ID if provided
-  const insertData: any = {
-    user_id: user.id,
+  const record: Project = {
+    id: fallbackId,
     title: title || 'Untitled Project',
     type,
     content,
-    audio_url: audioUrl
+    audio_url: audioUrl || undefined,
+    created_at: existingIndex >= 0 ? projects[existingIndex].created_at : new Date().toISOString()
   }
 
-  // If projectId is provided, use it
-  if (projectId) {
-    insertData.id = projectId
+  if (existingIndex >= 0) {
+    projects[existingIndex] = record
+  } else {
+    projects.unshift(record)
   }
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert([insertData])
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
+  setLocalProjects(projects)
+  return record
 }
 
 export const getProjects = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data as Project[]
+  return getLocalProjects()
 }
 
 export const getProjectById = async (projectId: string) => {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', projectId)
-    .single()
-
-  if (error) return null
-  return data as Project
+  const projects = getLocalProjects()
+  return projects.find(p => p.id === projectId) || null
 }
 
 export const deleteProject = async (projectId: string) => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("User not authenticated")
-
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-    .eq('user_id', user.id)
-
-  if (error) throw error
+  const projects = getLocalProjects().filter(p => p.id !== projectId)
+  setLocalProjects(projects)
   return true
 }

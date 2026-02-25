@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { saveProject } from '@/lib/projects'
 import { toast } from 'sonner'
 import { exportSlidesToPDF } from '@/lib/pdf'
-import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function CreateSlidesPage() {
@@ -21,26 +20,8 @@ export default function CreateSlidesPage() {
   const slidesContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) router.push('/login')
-
-      // Load Brand Kit if logged in
-      if (user) {
-        const { data } = await supabase.from('brand_kits').select('*').eq('user_id', user.id).single()
-        if (data) {
-          useSlidesStore.getState().setBrand({
-            name: data.name,
-            primaryColor: data.primary_color,
-            secondaryColor: data.secondary_color,
-            fontFamily: data.font_family,
-            logoUrl: data.logo_url
-          })
-        }
-      }
-    }
-    checkUser()
-  }, [router])
+    // Supabase disabled: no remote brand kit loading
+  }, [])
 
   const {
     projectId, setProjectId,

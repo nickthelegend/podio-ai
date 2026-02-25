@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useChat } from '@ai-sdk/react'
-import { supabase } from '@/lib/supabase'
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +13,6 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 type Platform = 'twitter' | 'linkedin'
@@ -29,9 +27,9 @@ interface ChatSession {
 }
 
 export default function ContentCreationPage() {
-    const router = useRouter()
     const [sessions, setSessions] = useState<ChatSession[]>([])
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+    const [sessionMessages, setSessionMessages] = useState<Record<string, any[]>>({})
 
     // Settings
     const [platform, setPlatform] = useState<Platform>('twitter')
@@ -41,53 +39,26 @@ export default function ContentCreationPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    // Auth check
-    useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (!user) router.push('/login')
-            else loadSessions()
-        })
-    }, [router])
-
-    const loadSessions = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data } = await supabase
-            .from('chat_sessions')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-
-        if (data) setSessions(data as ChatSession[])
-    }
+    // Supabase disabled: no remote sessions
+    useEffect(() => {}, [])
 
     const createNewSession = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data, error } = await supabase
-            .from('chat_sessions')
-            .insert({
-                user_id: user.id,
-                title: 'New Chat',
-                platform,
-                style
-            })
-            .select()
-            .single()
-
-        if (data) {
-            setSessions([data as ChatSession, ...sessions])
-            setCurrentSessionId(data.id)
-            setMessages([])
-            toast.success('New chat started')
+        const localSession: ChatSession = {
+            id: crypto.randomUUID(),
+            title: 'New Chat',
+            platform,
+            style,
+            created_at: new Date().toISOString(),
         }
+        setSessions([localSession, ...sessions])
+        setCurrentSessionId(localSession.id)
+        setMessages([])
+        toast.success('New chat started')
+        return localSession.id
     }
 
     const deleteSession = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
-        await supabase.from('chat_sessions').delete().eq('id', id)
         setSessions(sessions.filter(s => s.id !== id))
         if (currentSessionId === id) {
             setCurrentSessionId(null)
@@ -99,32 +70,22 @@ export default function ContentCreationPage() {
     // Load messages when session changes
     useEffect(() => {
         if (!currentSessionId) return
-
-        const loadMessages = async () => {
-            const { data } = await supabase
-                .from('chat_messages')
-                .select('*')
-                .eq('session_id', currentSessionId)
-                .order('created_at', { ascending: true })
-
-            if (data) {
-                setMessages(data.map(m => ({
-                    id: m.id,
-                    role: m.role as 'user' | 'assistant',
-                    parts: [{ type: 'text', text: m.content }]
-                })))
-            }
-        }
-        loadMessages()
+        const cached = sessionMessages[currentSessionId] || []
+        setMessages(cached)
     }, [currentSessionId])
 
     // Vercel AI SDK hook - v6 manual input handling
     const [input, setInput] = useState('')
 
     const { messages, setMessages, status, sendMessage } = useChat({
-        onFinish: async () => {
-            // Refresh session list to update titles if we implement auto-titling later
-            loadSessions()
+        onFinish: async ({ message }) => {
+            const key = currentSessionId
+            if (key && message) {
+                setSessionMessages(prev => {
+                    const updated = [...(prev[key] || []), message]
+                    return { ...prev, [key]: updated }
+                })
+            }
         },
         onError: (err: Error) => {
             toast.error("Failed to generate response")
@@ -165,7 +126,8 @@ export default function ContentCreationPage() {
             // Create session if it doesn't exist
             // Note: In a real app we might want to wait for this, or handle it optimistically
             // Here we'll try to create it and wait
-            await createNewSession()
+            const newId = await createNewSession()
+            if (newId) sessionId = newId
             // We need to get the new session ID. createNewSession updates state but it might not be immediate.
             // For safety, we can't easily get the ID here without refactoring createNewSession to return it.
             // Let's assume createNewSession sets state and we might miss it if we don't return it.
@@ -186,6 +148,17 @@ export default function ContentCreationPage() {
             }
         })
 
+        const key = sessionId || currentSessionId || ''
+        if (key) {
+            setSessionMessages(prev => {
+                const updated = [...(prev[key] || []), {
+                    id: crypto.randomUUID(),
+                    role: 'user',
+                    parts: [{ type: 'text', text: input }]
+                }]
+                return { ...prev, [key]: updated }
+            })
+        }
         setInput('')
     }
 
