@@ -1,7 +1,12 @@
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { NextResponse } from "next/server";
 
-const client = new TextToSpeechClient();
+// Safely load credentials either from Vercel env variable (JSON string) or fallback to local GOOGLE_APPLICATION_CREDENTIALS file path
+const clientOptions = process.env.GOOGLE_CREDENTIALS_JSON
+  ? { credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON) }
+  : {};
+
+const client = new TextToSpeechClient(clientOptions);
 
 // Voice Configurations
 const VOICE_REGISTRY: Record<string, { Host: any; Guest: any }> = {
@@ -36,43 +41,43 @@ export async function POST(req: Request) {
     }
 
     const audioBuffers: Buffer[] = [];
-    
+
     // Select voice config based on language, fallback to en-US
     const selectedVoices = VOICE_REGISTRY[language] || VOICE_REGISTRY["en-US"];
 
     for (const line of script) {
-        if (!line.line) continue;
+      if (!line.line) continue;
 
-        const speakerKey = line.speaker === 'Speaker R' || line.speaker === 'Host' ? 'Host' : 'Guest';
-        const voiceConfig = selectedVoices[speakerKey as keyof typeof selectedVoices];
+      const speakerKey = line.speaker === 'Speaker R' || line.speaker === 'Host' ? 'Host' : 'Guest';
+      const voiceConfig = selectedVoices[speakerKey as keyof typeof selectedVoices];
 
-        const request = {
-            input: { text: line.line },
-            voice: { 
-                languageCode: voiceConfig.languageCode, 
-                name: voiceConfig.name 
-            },
-            audioConfig: { audioEncoding: "MP3" as const }
-        };
+      const request = {
+        input: { text: line.line },
+        voice: {
+          languageCode: voiceConfig.languageCode,
+          name: voiceConfig.name
+        },
+        audioConfig: { audioEncoding: "MP3" as const }
+      };
 
-        try {
-            const [response] = await client.synthesizeSpeech(request);
-            if (response.audioContent) {
-                audioBuffers.push(Buffer.from(response.audioContent));
-            }
-        } catch (e) {
-            console.error(`Error generating line for ${speakerKey} (${language}):`, e);
+      try {
+        const [response] = await client.synthesizeSpeech(request);
+        if (response.audioContent) {
+          audioBuffers.push(Buffer.from(response.audioContent));
         }
+      } catch (e) {
+        console.error(`Error generating line for ${speakerKey} (${language}):`, e);
+      }
     }
 
     if (audioBuffers.length === 0) {
-        throw new Error("No audio content generated");
+      throw new Error("No audio content generated");
     }
 
     const finalAudio = Buffer.concat(audioBuffers);
 
-    return NextResponse.json({ 
-      audio: finalAudio.toString("base64") 
+    return NextResponse.json({
+      audio: finalAudio.toString("base64")
     });
 
   } catch (error: any) {
