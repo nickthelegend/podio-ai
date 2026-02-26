@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Save, Upload, Palette, Type } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { supabase } from '@/lib/supabase'
 import { BrandKit } from '@/lib/slidesStore'
 import { toast } from 'sonner'
 
@@ -24,79 +23,29 @@ export function BrandSettingsModal({ isOpen, onClose, onSave, currentBrand }: Br
     const [logoUrl, setLogoUrl] = useState(currentBrand?.logoUrl || '')
     const [isLoading, setIsLoading] = useState(false)
 
-    // Load from DB on open
+    // No DB load on open
     useEffect(() => {
-        if (isOpen) {
-            loadBrandKit()
+        if (isOpen && currentBrand) {
+            setName(currentBrand.name || 'My Brand')
+            setPrimaryColor(currentBrand.primaryColor || '#ec4899')
+            setSecondaryColor(currentBrand.secondaryColor || '#a855f7')
+            setFontFamily(currentBrand.fontFamily || 'Inter')
+            setLogoUrl(currentBrand.logoUrl || '')
         }
-    }, [isOpen])
+    }, [isOpen, currentBrand])
 
-    const loadBrandKit = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data } = await supabase
-            .from('brand_kits')
-            .select('*')
-            .eq('user_id', user.id)
-            .single()
-
-        if (data) {
-            setName(data.name)
-            setPrimaryColor(data.primary_color)
-            setSecondaryColor(data.secondary_color)
-            setFontFamily(data.font_family)
-            setLogoUrl(data.logo_url || '')
-        }
-    }
-
-    const handleSave = async () => {
+    const handleSave = () => {
         setIsLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            toast.error("Please login to save brand kit")
-            setIsLoading(false)
-            return
-        }
-
-        const brandData = {
-            user_id: user.id,
+        const kb: BrandKit = {
             name,
-            primary_color: primaryColor,
-            secondary_color: secondaryColor,
-            font_family: fontFamily,
-            logo_url: logoUrl
+            primaryColor,
+            secondaryColor,
+            fontFamily,
+            logoUrl
         }
-
-        // Upsert to DB
-        // Check if exists first for simplicity or stick to simple upsert if ID known? 
-        // We'll just delete old and insert new or better: select id.
-
-        const { data: existing } = await supabase.from('brand_kits').select('id').eq('user_id', user.id).single()
-
-        let error;
-        if (existing) {
-            const res = await supabase.from('brand_kits').update(brandData).eq('id', existing.id)
-            error = res.error
-        } else {
-            const res = await supabase.from('brand_kits').insert(brandData)
-            error = res.error
-        }
-
-        if (error) {
-            toast.error("Failed to save brand kit")
-        } else {
-            const kb: BrandKit = {
-                name,
-                primaryColor,
-                secondaryColor,
-                fontFamily,
-                logoUrl
-            }
-            onSave(kb)
-            toast.success("Brand kit saved & applied!")
-            onClose()
-        }
+        onSave(kb)
+        toast.success("Brand kit applied temporarily!")
+        onClose()
         setIsLoading(false)
     }
 

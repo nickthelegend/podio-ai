@@ -3,7 +3,6 @@
 import { Header } from '@/components/Header'
 import { Button } from '@/components/ui/button'
 import { useSlidesStore, EnhancedSlide, Project } from '@/lib/slidesStore'
-import { getProjectById } from '@/lib/projects'
 import { SlideComposition } from '@/components/remotion/SlideComposition'
 import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
@@ -52,32 +51,11 @@ export default function ProjectExportPage() {
             const currentProject = getProject()
             if (currentProject && currentProject.id === projectId) {
                 setProject(currentProject)
-                setIsLoading(false)
-                return
+            } else {
+                console.warn('Project not found in local store')
             }
 
-            // Try to load from Supabase
-            try {
-                const data = await getProjectById(projectId)
-
-                if (data) {
-                    const projectData: Project = {
-                        id: data.id,
-                        topic: data.title,
-                        style: data.content?.style || 'Modern',
-                        format: data.content?.format || '16:9',
-                        brand: data.content?.brand,
-                        slides: data.content?.slides || [],
-                        createdAt: data.created_at,
-                        updatedAt: data.created_at,
-                        hasVideo: data.content?.slides?.some((s: EnhancedSlide) => s.audioUrl) || false
-                    }
-                    setProject(projectData)
-                    loadProject(projectData)
-                }
-            } catch (e) {
-                console.error('Failed to load project:', e)
-            }
+            setIsLoading(false)
 
             setIsLoading(false)
         }

@@ -1,0 +1,22 @@
+
+> podio-ai@0.1.0 dev
+> next dev -p 3002 -p 3002
+
+⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.ts options detected: 
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3002
+- Network:       http://192.168.1.8:3002
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 667ms
+ POST /api/slides/generate 200 in 27.5s (compile: 137ms, render: 27.3s)
+ POST /api/slides/generate 200 in 33.6s (compile: 1312µs, render: 33.6s)
+ POST /api/podcast/tts 200 in 1781ms (compile: 672ms, render: 1109ms)
+ POST /api/podcast/tts 200 in 817ms (compile: 3ms, render: 814ms)
+ POST /api/podcast/tts 200 in 917ms (compile: 1555µs, render: 915ms)
+ POST /api/podcast/tts 200 in 821ms (compile: 1887µs, render: 819ms)
+ POST /api/podcast/tts 200 in 902ms (compile: 2ms, render: 899ms)
