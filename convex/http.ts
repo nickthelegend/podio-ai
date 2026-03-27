@@ -1,3 +1,4 @@
+import { httpRouter } from "./_generated/server";
 import { httpAction } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -69,3 +70,31 @@ export const deleteProject = httpAction(async (ctx, request) => {
   await ctx.db.delete(projectId as any);
   return Response.json({ success: true });
 });
+
+const http = httpRouter();
+
+http.route({
+  path: "/projects/save",
+  method: "POST",
+  handler: saveProject,
+});
+
+http.route({
+  path: "/projects/list",
+  method: "GET",
+  handler: getProjects,
+});
+
+http.route({
+  path: "/projects/get",
+  method: "GET",
+  handler: getProjectById,
+});
+
+http.route({
+  path: "/projects/delete",
+  method: "POST",
+  handler: deleteProject,
+});
+
+export default http;
