@@ -1,110 +1,75 @@
-import { supabase } from '@/lib/supabase'
+import { Id } from "./_generated/dataModel";
+
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export interface Project {
-  id: string
-  title: string
-  type: 'podcast' | 'slides'
-  content: any
-  audio_url?: string
-  created_at: string
+  _id: string;
+  userId: string;
+  title: string;
+  type: 'podcast' | 'slides';
+  content: any;
+  audioUrl?: string;
+  createdAt: number;
 }
 
 export const saveProject = async (
+  userId: string,
   title: string,
   type: 'podcast' | 'slides',
   content: any,
   audioUrl?: string | null,
   projectId?: string
 ) => {
-  const { data: { user } } = await supabase.auth.getUser()
+  const response = await fetch(`${CONVEX_URL}/projects/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectId,
+      userId,
+      title,
+      type,
+      content,
+      audioUrl,
+    }),
+  });
 
-  if (!user) throw new Error("User not authenticated")
-
-  // Check if project already exists (for updates)
-  if (projectId) {
-    const { data: existing } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .single()
-
-    if (existing) {
-      // Update existing project
-      const { data, error } = await supabase
-        .from('projects')
-        .update({
-          title: title || 'Untitled Project',
-          content,
-          audio_url: audioUrl,
-        })
-        .eq('id', projectId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    }
+  if (!response.ok) {
+    throw new Error("Failed to save project");
   }
 
-  // Create new project with custom ID if provided
-  const insertData: any = {
-    user_id: user.id,
-    title: title || 'Untitled Project',
-    type,
-    content,
-    audio_url: audioUrl
+  return response.json();
+};
+
+export const getProjects = async (userId: string) => {
+  const response = await fetch(`${CONVEX_URL}/projects/list?userId=${userId}`);
+
+  if (!response.ok) {
+    return [];
   }
 
-  // If projectId is provided, use it
-  if (projectId) {
-    insertData.id = projectId
-  }
-
-  const { data, error } = await supabase
-    .from('projects')
-    .insert([insertData])
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export const getProjects = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data as Project[]
-}
+  return response.json();
+};
 
 export const getProjectById = async (projectId: string) => {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', projectId)
-    .single()
+  const response = await fetch(`${CONVEX_URL}/projects/get?projectId=${projectId}`);
 
-  if (error) return null
-  return data as Project
-}
+  if (!response.ok) {
+    return null;
+  }
 
-export const deleteProject = async (projectId: string) => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("User not authenticated")
+  return response.json();
+};
 
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-    .eq('user_id', user.id)
+export const deleteProject = async (projectId: string, userId: string) => {
+  const response = await fetch(`${CONVEX_URL}/projects/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, userId }),
+  });
 
-  if (error) throw error
-  return true
-}
+  if (!response.ok) {
+    throw new Error("Failed to delete project");
+  }
+
+  return true;
+};
