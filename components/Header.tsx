@@ -39,6 +39,10 @@ export function Header() {
             <Link href="/download" className="text-sm text-gray-400 hover:text-white transition-colors">
               Download
             </Link>
+            <Link href="/news" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+              News
+            </Link>
           </nav>
         </div>
 

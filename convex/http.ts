@@ -71,6 +71,47 @@ export const deleteProject = httpAction(async (ctx, request) => {
   return Response.json({ success: true });
 });
 
+export const saveNewsPodcast = httpAction(async (ctx, request) => {
+  const { date, headlines, script, audioUrl, language } = await request.json();
+
+  const existing = await ctx.db
+    .query("newsPodcasts")
+    .withIndex("by_date")
+    .filter((q) => q.eq(q.field("date"), date))
+    .first();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      headlines,
+      script,
+      audioUrl,
+      language,
+    });
+    return Response.json(await ctx.db.get(existing._id));
+  }
+
+  const id = await ctx.db.insert("newsPodcasts", {
+    date,
+    headlines,
+    script,
+    audioUrl,
+    language,
+    createdAt: Date.now(),
+  });
+
+  return Response.json(await ctx.db.get(id));
+});
+
+export const getNewsPodcasts = httpAction(async (ctx, request) => {
+  const podcasts = await ctx.db
+    .query("newsPodcasts")
+    .withIndex("by_date")
+    .order("desc")
+    .take(30);
+
+  return Response.json(podcasts);
+});
+
 const http = httpRouter();
 
 http.route({
@@ -95,6 +136,18 @@ http.route({
   path: "/projects/delete",
   method: "POST",
   handler: deleteProject,
+});
+
+http.route({
+  path: "/news/save",
+  method: "POST",
+  handler: saveNewsPodcast,
+});
+
+http.route({
+  path: "/news/list",
+  method: "GET",
+  handler: getNewsPodcasts,
 });
 
 export default http;
