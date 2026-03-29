@@ -56,6 +56,7 @@ export default function CreateSlidesPage() {
 
     try {
       await saveProject(
+        "user_anonymous",
         topic.slice(0, 50) || 'Untitled Slides',
         'slides',
         {
@@ -104,6 +105,7 @@ export default function CreateSlidesPage() {
         // But we need to use the newly generated project ID
         try {
           await saveProject(
+            "user_anonymous",
             topicToUse.slice(0, 50) || 'Untitled Slides',
             'slides',
             {
@@ -243,25 +245,6 @@ export default function CreateSlidesPage() {
       setHasVideo(true)
       setVideoStatus('complete')
 
-      // Auto-save after video generation
-      if (projectId) {
-        await saveProject(
-          topic.slice(0, 50) || 'Untitled Slides',
-          'slides',
-          {
-            projectId,
-            topic,
-            style,
-            format,
-            brand,
-            slides: newSlides,
-            hasVideo: true
-          },
-          null,
-          projectId
-        )
-      }
-
     } catch (e) {
       setVideoStatus('error')
       toast.error("Failed to generate video")
@@ -281,6 +264,7 @@ export default function CreateSlidesPage() {
 
     try {
       await saveProject(
+        "user_anonymous",
         topic.slice(0, 50) || 'Untitled Slides',
         'slides',
         {
@@ -722,6 +706,7 @@ export default function CreateSlidesPage() {
                             // Auto-save
                             if (projectId) {
                               await saveProject(
+                                "user_anonymous",
                                 topic,
                                 'slides',
                                 { projectId, topic, style, slides: newSlides, hasVideo, brand },

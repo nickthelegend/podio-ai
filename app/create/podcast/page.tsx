@@ -91,6 +91,7 @@ export default function CreatePodcastPage() {
     setIsSaving(true)
     try {
       await saveProject(
+        "user_anonymous",
         topic.slice(0, 50) || 'Untitled Podcast',
         'podcast',
         { topic, language, script },
