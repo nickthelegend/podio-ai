@@ -1,6 +1,6 @@
 import { Id } from "../convex/_generated/dataModel";
 
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+const CONVEX_URL = "/api/proxy";
 
 export interface Project {
   _id: string;
@@ -34,30 +34,34 @@ export const saveProject = async (
   });
 
   if (!response.ok) {
-    throw new Error("Failed to save project");
+    const errorBody = await response.text();
+    console.error("Save error:", errorBody);
+    throw new Error("Failed to save project via proxy");
   }
 
   return response.json();
 };
 
 export const getProjects = async (userId: string) => {
-  const response = await fetch(`${CONVEX_URL}/projects/list?userId=${userId}`);
-
-  if (!response.ok) {
+  try {
+    const response = await fetch(`${CONVEX_URL}/projects/list?userId=${userId}`);
+    if (!response.ok) return [];
+    return response.json();
+  } catch (e) {
+    console.error("Get projects proxy error:", e);
     return [];
   }
-
-  return response.json();
 };
 
 export const getProjectById = async (projectId: string) => {
-  const response = await fetch(`${CONVEX_URL}/projects/get?projectId=${projectId}`);
-
-  if (!response.ok) {
+  try {
+    const response = await fetch(`${CONVEX_URL}/projects/get?projectId=${projectId}`);
+    if (!response.ok) return null;
+    return response.json();
+  } catch (e) {
+    console.error("Get project proxy error:", e);
     return null;
   }
-
-  return response.json();
 };
 
 export const deleteProject = async (projectId: string, userId: string) => {
@@ -68,7 +72,7 @@ export const deleteProject = async (projectId: string, userId: string) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to delete project");
+    throw new Error("Failed to delete project via proxy");
   }
 
   return true;
