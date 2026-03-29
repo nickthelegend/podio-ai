@@ -1,19 +1,75 @@
+import { Id } from "./_generated/dataModel";
+
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+
 export interface Project {
-    id: string;
-    title: string;
-    type: 'slides' | 'podcast';
-    created_at: string;
-    content: any;
+  _id: string;
+  userId: string;
+  title: string;
+  type: 'podcast' | 'slides';
+  content: any;
+  audioUrl?: string;
+  createdAt: number;
 }
 
-export async function getProjects(): Promise<Project[]> {
+export const saveProject = async (
+  userId: string,
+  title: string,
+  type: 'podcast' | 'slides',
+  content: any,
+  audioUrl?: string | null,
+  projectId?: string
+) => {
+  const response = await fetch(`${CONVEX_URL}/projects/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectId,
+      userId,
+      title,
+      type,
+      content,
+      audioUrl,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to save project");
+  }
+
+  return response.json();
+};
+
+export const getProjects = async (userId: string) => {
+  const response = await fetch(`${CONVEX_URL}/projects/list?userId=${userId}`);
+
+  if (!response.ok) {
     return [];
-}
+  }
 
-export async function getProjectById(id: string): Promise<Project | null> {
-    return null;
-}
+  return response.json();
+};
 
-export async function saveProject(projectData: any) {
+export const getProjectById = async (projectId: string) => {
+  const response = await fetch(`${CONVEX_URL}/projects/get?projectId=${projectId}`);
+
+  if (!response.ok) {
     return null;
-}
+  }
+
+  return response.json();
+};
+
+export const deleteProject = async (projectId: string, userId: string) => {
+  const response = await fetch(`${CONVEX_URL}/projects/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId, userId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete project");
+  }
+
+  return true;
+};
