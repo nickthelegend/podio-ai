@@ -1,6 +1,6 @@
-import { Id } from "./_generated/dataModel";
+import { Id } from "../convex/_generated/dataModel";
 
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
 
 export interface Project {
   _id: string;
