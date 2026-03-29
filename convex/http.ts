@@ -1,7 +1,8 @@
-import { httpRouter } from "./_generated/server";
 import { httpAction } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+// Projects HTTP Actions
 export const saveProject = httpAction(async (ctx, request) => {
   const { projectId, userId, title, type, content, audioUrl } = await request.json();
 
@@ -71,6 +72,7 @@ export const deleteProject = httpAction(async (ctx, request) => {
   return Response.json({ success: true });
 });
 
+// News Podcasts HTTP Actions
 export const saveNewsPodcast = httpAction(async (ctx, request) => {
   const { date, headlines, script, audioUrl, language } = await request.json();
 
@@ -112,42 +114,24 @@ export const getNewsPodcasts = httpAction(async (ctx, request) => {
   return Response.json(podcasts);
 });
 
-const http = httpRouter();
-
-http.route({
-  path: "/projects/save",
-  method: "POST",
-  handler: saveProject,
+// Query and Mutation functions (for internal use)
+export const getProjectsQuery = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("projects")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
 });
 
-http.route({
-  path: "/projects/list",
-  method: "GET",
-  handler: getProjects,
+export const getNewsPodcastsQuery = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("newsPodcasts")
+      .withIndex("by_date")
+      .order("desc")
+      .take(30);
+  },
 });
-
-http.route({
-  path: "/projects/get",
-  method: "GET",
-  handler: getProjectById,
-});
-
-http.route({
-  path: "/projects/delete",
-  method: "POST",
-  handler: deleteProject,
-});
-
-http.route({
-  path: "/news/save",
-  method: "POST",
-  handler: saveNewsPodcast,
-});
-
-http.route({
-  path: "/news/list",
-  method: "GET",
-  handler: getNewsPodcasts,
-});
-
-export default http;
