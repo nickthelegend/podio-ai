@@ -11,7 +11,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_created", ["userId, createdAt"]),
+    .index("by_created", ["userId", "createdAt"]),
 
   newsPodcasts: defineTable({
     date: v.string(),
