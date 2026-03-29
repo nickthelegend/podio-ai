@@ -311,7 +311,7 @@ export default function ProjectExportPage() {
                                 <Play className="w-3 h-3" />
                                 <span className="text-[10px] font-bold uppercase tracking-widest">Video Preview</span>
                             </div>
-                            <h1 className="text-3xl font-bold text-white">{topic}</h1>
+                            <h1 className="text-3xl font-bold text-white line-clamp-2">{topic}</h1>
                             {format !== '16:9' && (
                                 <span className="text-xs text-gray-500 bg-white/10 px-2 py-1 rounded ml-2">
                                     {format} Format
