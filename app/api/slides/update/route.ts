@@ -23,6 +23,10 @@ const singleSlideSchema: Schema = {
             type: SchemaType.STRING,
             description: "Detailed talking points for the presenter, 60-100 words. ACTUALLY write what the presenter should say."
         },
+        htmlContent: {
+            type: SchemaType.STRING,
+            description: "Complete, self-contained HTML div with WOW design factor"
+        },
         subtitle: { type: SchemaType.STRING },
         description: { type: SchemaType.STRING },
         backgroundColor: { type: SchemaType.STRING, description: "Hex color code" },
@@ -30,7 +34,7 @@ const singleSlideSchema: Schema = {
         accentColor: { type: SchemaType.STRING, description: "Hex color code" },
         gradient: { type: SchemaType.STRING, description: "CSS gradient string" }
     },
-    required: ["title", "layoutType", "bullets", "speakerNotes"],
+    required: ["title", "layoutType", "bullets", "speakerNotes", "htmlContent"],
 };
 
 export async function POST(req: Request) {
@@ -68,6 +72,11 @@ ${JSON.stringify(currentSlide, null, 2)}
 5. **TONE**: Adapt the language to match requested tone (e.g., "make it funny", "more professional", "dramatic", "concise").
 6. **STYLE**: If the user asks to change colors, background, or appearance, provide new hex codes/gradients. 
 7. **SPEAKER NOTES**: These must be High Quality. Write exactly what should be said.
+8. **HTML CONTENT**: You MUST generate a new \`htmlContent\` field that reflects the updated text and design. Follow these design rules:
+   - Use Mesh gradients, Glass cards, Glowing orbs, and huge typography.
+   - Ensure the updated content isn't just a list - make it visual and stunning.
+   - Backgrounds should be percentage-based and responsive.
+   - Example container: \`<div style="width:100%;height:100%;position:relative;overflow:hidden;background:[GRADIENT];">\`.
 
 Return ONLY the updated fields in the requested JSON format.`;
 

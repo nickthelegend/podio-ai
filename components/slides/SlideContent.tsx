@@ -91,35 +91,44 @@ export const SlideContent: React.FC<SlideContentProps> = ({ slide, brand, frame 
                 height: '100%',
                 padding: '60px 80px',
             }}>
-                {slide.layoutType === 'title' ? (
-                    <TitleLayout
-                        slide={slide}
-                        getOpacity={getOpacity}
-                        getTranslateY={getTranslateY}
-                        accentColor={primaryColor}
-                        textColor={textColor}
-                    />
-                ) : slide.layoutType === 'statistics' ? (
-                    <StatisticsLayout
-                        slide={slide}
-                        getOpacity={getOpacity}
-                        getTranslateY={getTranslateY}
-                        accentColor={primaryColor}
-                        textColor={textColor}
-                    />
-                ) : slide.layoutType === 'conclusion' ? (
-                    <ConclusionLayout
-                        slide={slide}
-                        getOpacity={getOpacity}
-                        textColor={textColor}
+                {slide.htmlContent ? (
+                    <div
+                        style={{ width: '100%', height: '100%' }}
+                        dangerouslySetInnerHTML={{ __html: slide.htmlContent }}
                     />
                 ) : (
-                    <ContentLayout
-                        slide={slide}
-                        getOpacity={getOpacity}
-                        getTranslateY={getTranslateY}
-                        accentColor={primaryColor}
-                    />
+                    <>
+                        {slide.layoutType?.toLowerCase() === 'title' ? (
+                            <TitleLayout
+                                slide={slide}
+                                getOpacity={getOpacity}
+                                getTranslateY={getTranslateY}
+                                accentColor={primaryColor}
+                                textColor={textColor}
+                            />
+                        ) : slide.layoutType?.toLowerCase() === 'statistics' ? (
+                            <StatisticsLayout
+                                slide={slide}
+                                getOpacity={getOpacity}
+                                getTranslateY={getTranslateY}
+                                accentColor={primaryColor}
+                                textColor={textColor}
+                            />
+                        ) : slide.layoutType?.toLowerCase() === 'conclusion' ? (
+                            <ConclusionLayout
+                                slide={slide}
+                                getOpacity={getOpacity}
+                                textColor={textColor}
+                            />
+                        ) : (
+                            <ContentLayout
+                                slide={slide}
+                                getOpacity={getOpacity}
+                                getTranslateY={getTranslateY}
+                                accentColor={primaryColor}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </div>
